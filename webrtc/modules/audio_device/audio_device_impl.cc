@@ -9,6 +9,7 @@
  */
 
 #include "webrtc/base/refcount.h"
+#include "webrtc/base/trace_event.h"
 #include "webrtc/common_audio/signal_processing/include/signal_processing_library.h"
 #include "webrtc/modules/audio_device/audio_device_config.h"
 #include "webrtc/modules/audio_device/audio_device_impl.h"
@@ -75,12 +76,12 @@ namespace webrtc {
 //  AudioDeviceModule::Create()
 // ----------------------------------------------------------------------------
 
-rtc::scoped_refptr<AudioDeviceModule> AudioDeviceModuleImpl::Create(
+rtc::scoped_refptr<AudioDeviceModule> AudioDeviceModule::Create(
     const int32_t id,
-    const AudioLayer audioLayer) {
+    const AudioLayer audio_layer) {
     // Create the generic ref counted (platform independent) implementation.
     rtc::scoped_refptr<AudioDeviceModuleImpl> audioDevice(
-        new rtc::RefCountedObject<AudioDeviceModuleImpl>(id, audioLayer));
+        new rtc::RefCountedObject<AudioDeviceModuleImpl>(id, audio_layer));
 
     // Ensure that the current platform is supported.
     if (audioDevice->CheckPlatform() == -1)
@@ -1454,6 +1455,7 @@ int32_t AudioDeviceModuleImpl::InitPlayout()
 
 int32_t AudioDeviceModuleImpl::InitRecording()
 {
+    TRACE_EVENT0("webrtc", "AudioDeviceModuleImpl::InitRecording");
     CHECK_INITIALIZED();
     _audioDeviceBuffer.InitRecording();
     return (_ptrAudioDevice->InitRecording());
@@ -1515,6 +1517,7 @@ bool AudioDeviceModuleImpl::Playing() const
 
 int32_t AudioDeviceModuleImpl::StartRecording()
 {
+    TRACE_EVENT0("webrtc", "AudioDeviceModuleImpl::StartRecording");
     CHECK_INITIALIZED();
     return (_ptrAudioDevice->StartRecording());
 }

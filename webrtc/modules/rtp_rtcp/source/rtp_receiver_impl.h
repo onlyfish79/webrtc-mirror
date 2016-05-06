@@ -11,11 +11,13 @@
 #ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTP_RECEIVER_IMPL_H_
 #define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTP_RECEIVER_IMPL_H_
 
+#include <memory>
+
+#include "webrtc/base/criticalsection.h"
 #include "webrtc/base/scoped_ptr.h"
 #include "webrtc/modules/rtp_rtcp/include/rtp_receiver.h"
 #include "webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h"
 #include "webrtc/modules/rtp_rtcp/source/rtp_receiver_strategy.h"
-#include "webrtc/system_wrappers/include/critical_section_wrapper.h"
 #include "webrtc/typedefs.h"
 
 namespace webrtc {
@@ -75,11 +77,11 @@ class RtpReceiverImpl : public RtpReceiver {
 
   Clock* clock_;
   RTPPayloadRegistry* rtp_payload_registry_;
-  rtc::scoped_ptr<RTPReceiverStrategy> rtp_media_receiver_;
+  std::unique_ptr<RTPReceiverStrategy> rtp_media_receiver_;
 
   RtpFeedback* cb_rtp_feedback_;
 
-  rtc::scoped_ptr<CriticalSectionWrapper> critical_section_rtp_receiver_;
+  rtc::CriticalSection critical_section_rtp_receiver_;
   int64_t last_receive_time_;
   size_t last_received_payload_length_;
 

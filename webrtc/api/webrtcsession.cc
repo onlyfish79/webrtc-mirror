@@ -528,7 +528,7 @@ WebRtcSession::~WebRtcSession() {
 
 bool WebRtcSession::Initialize(
     const PeerConnectionFactoryInterface::Options& options,
-    rtc::scoped_ptr<DtlsIdentityStoreInterface> dtls_identity_store,
+    std::unique_ptr<DtlsIdentityStoreInterface> dtls_identity_store,
     const PeerConnectionInterface::RTCConfiguration& rtc_configuration) {
   bundle_policy_ = rtc_configuration.bundle_policy;
   rtcp_mux_policy_ = rtc_configuration.rtcp_mux_policy;
@@ -675,7 +675,7 @@ bool WebRtcSession::SetLocalDescription(SessionDescriptionInterface* desc,
   ASSERT(signaling_thread()->IsCurrent());
 
   // Takes the ownership of |desc| regardless of the result.
-  rtc::scoped_ptr<SessionDescriptionInterface> desc_temp(desc);
+  std::unique_ptr<SessionDescriptionInterface> desc_temp(desc);
 
   // Validate SDP.
   if (!ValidateSessionDescription(desc, cricket::CS_LOCAL, err_desc)) {
@@ -731,14 +731,14 @@ bool WebRtcSession::SetRemoteDescription(SessionDescriptionInterface* desc,
   ASSERT(signaling_thread()->IsCurrent());
 
   // Takes the ownership of |desc| regardless of the result.
-  rtc::scoped_ptr<SessionDescriptionInterface> desc_temp(desc);
+  std::unique_ptr<SessionDescriptionInterface> desc_temp(desc);
 
   // Validate SDP.
   if (!ValidateSessionDescription(desc, cricket::CS_REMOTE, err_desc)) {
     return false;
   }
 
-  rtc::scoped_ptr<SessionDescriptionInterface> old_remote_desc(
+  std::unique_ptr<SessionDescriptionInterface> old_remote_desc(
       remote_desc_.release());
   remote_desc_.reset(desc_temp.release());
 
@@ -1039,7 +1039,7 @@ bool WebRtcSession::GetLocalCertificate(
                                                     certificate);
 }
 
-rtc::scoped_ptr<rtc::SSLCertificate> WebRtcSession::GetRemoteSSLCertificate(
+std::unique_ptr<rtc::SSLCertificate> WebRtcSession::GetRemoteSSLCertificate(
     const std::string& transport_name) {
   ASSERT(signaling_thread()->IsCurrent());
   return transport_controller_->GetRemoteSSLCertificate(transport_name);
@@ -1236,12 +1236,12 @@ void WebRtcSession::SetAudioPlayoutVolume(uint32_t ssrc, double volume) {
 }
 
 void WebRtcSession::SetRawAudioSink(uint32_t ssrc,
-                                    rtc::scoped_ptr<AudioSinkInterface> sink) {
+                                    std::unique_ptr<AudioSinkInterface> sink) {
   ASSERT(signaling_thread()->IsCurrent());
   if (!voice_channel_)
     return;
 
-  voice_channel_->SetRawAudioSink(ssrc, rtc::ScopedToUnique(std::move(sink)));
+  voice_channel_->SetRawAudioSink(ssrc, std::move(sink));
 }
 
 RtpParameters WebRtcSession::GetAudioRtpParameters(uint32_t ssrc) const {
@@ -1261,8 +1261,9 @@ bool WebRtcSession::SetAudioRtpParameters(uint32_t ssrc,
   return voice_channel_->SetRtpParameters(ssrc, parameters);
 }
 
-bool WebRtcSession::SetCaptureDevice(uint32_t ssrc,
-                                     cricket::VideoCapturer* camera) {
+bool WebRtcSession::SetSource(
+    uint32_t ssrc,
+    rtc::VideoSourceInterface<cricket::VideoFrame>* source) {
   ASSERT(signaling_thread()->IsCurrent());
 
   if (!video_channel_) {
@@ -1271,13 +1272,7 @@ bool WebRtcSession::SetCaptureDevice(uint32_t ssrc,
     LOG(LS_WARNING) << "Video not used in this call.";
     return false;
   }
-  if (!video_channel_->SetCapturer(ssrc, camera)) {
-    // Allow that SetCapturer fail if |camera| is NULL but assert otherwise.
-    // This in the normal case when the underlying media channel has already
-    // been deleted.
-    ASSERT(camera == NULL);
-    return false;
-  }
+  video_channel_->SetSource(ssrc, source);
   return true;
 }
 

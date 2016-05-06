@@ -18,6 +18,7 @@
 
 #include "webrtc/audio_state.h"
 #include "webrtc/base/buffer.h"
+#include "webrtc/base/constructormagic.h"
 #include "webrtc/base/networkroute.h"
 #include "webrtc/base/scoped_ref_ptr.h"
 #include "webrtc/base/stream.h"
@@ -103,6 +104,7 @@ class WebRtcVoiceEngine final : public webrtc::TraceCallback  {
 
   void StartAecDump(const std::string& filename);
   int CreateVoEChannel();
+  webrtc::AudioDeviceModule* adm();
 
   rtc::ThreadChecker signal_thread_checker_;
   rtc::ThreadChecker worker_thread_checker_;
@@ -180,7 +182,7 @@ class WebRtcVoiceMediaChannel final : public VoiceMediaChannel,
   void OnRtcpReceived(rtc::CopyOnWriteBuffer* packet,
                       const rtc::PacketTime& packet_time) override;
   void OnNetworkRouteChanged(const std::string& transport_name,
-                             const NetworkRoute& network_route) override;
+                             const rtc::NetworkRoute& network_route) override;
   void OnReadyToSend(bool ready) override;
   bool GetStats(VoiceMediaInfo* info) override;
 
@@ -226,20 +228,22 @@ class WebRtcVoiceMediaChannel final : public VoiceMediaChannel,
   bool IsDefaultRecvStream(uint32_t ssrc) {
     return default_recv_ssrc_ == static_cast<int64_t>(ssrc);
   }
-  bool SetSendBitrate(int bps);
+  bool SetMaxSendBitrate(int bps);
   bool SetChannelParameters(int channel,
                             const webrtc::RtpParameters& parameters);
-  bool SetSendBitrate(int channel, int bps);
+  bool SetMaxSendBitrate(int channel, int bps);
   bool HasSendCodec() const {
     return send_codec_spec_.codec_inst.pltype != -1;
   }
   bool ValidateRtpParameters(const webrtc::RtpParameters& parameters);
+  void SetupRecording();
 
   rtc::ThreadChecker worker_thread_checker_;
 
   WebRtcVoiceEngine* const engine_ = nullptr;
+  std::vector<AudioCodec> send_codecs_;
   std::vector<AudioCodec> recv_codecs_;
-  int send_bitrate_bps_ = 0;
+  int max_send_bitrate_bps_ = 0;
   AudioOptions options_;
   rtc::Optional<int> dtmf_payload_type_;
   bool desired_playout_ = false;

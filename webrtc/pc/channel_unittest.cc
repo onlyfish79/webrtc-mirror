@@ -48,12 +48,12 @@ using cricket::StreamParams;
 using cricket::TransportChannel;
 using rtc::WindowId;
 
-static const cricket::AudioCodec kPcmuCodec(0, "PCMU", 64000, 8000, 1, 0);
-static const cricket::AudioCodec kPcmaCodec(8, "PCMA", 64000, 8000, 1, 0);
-static const cricket::AudioCodec kIsacCodec(103, "ISAC", 40000, 16000, 1, 0);
-static const cricket::VideoCodec kH264Codec(97, "H264", 640, 400, 30, 0);
-static const cricket::VideoCodec kH264SvcCodec(99, "H264-SVC", 320, 200, 15, 0);
-static const cricket::DataCodec kGoogleDataCodec(101, "google-data", 0);
+static const cricket::AudioCodec kPcmuCodec(0, "PCMU", 64000, 8000, 1);
+static const cricket::AudioCodec kPcmaCodec(8, "PCMA", 64000, 8000, 1);
+static const cricket::AudioCodec kIsacCodec(103, "ISAC", 40000, 16000, 1);
+static const cricket::VideoCodec kH264Codec(97, "H264", 640, 400, 30);
+static const cricket::VideoCodec kH264SvcCodec(99, "H264-SVC", 320, 200, 15);
+static const cricket::DataCodec kGoogleDataCodec(101, "google-data");
 static const uint32_t kSsrc1 = 0x1111;
 static const uint32_t kSsrc2 = 0x2222;
 static const uint32_t kSsrc3 = 0x3333;
@@ -162,13 +162,13 @@ class ChannelTest : public testing::Test, public sigslot::has_slots<> {
     if (flags1 & DTLS) {
       // Confirmed to work with KT_RSA and KT_ECDSA.
       transport_controller1_.SetLocalCertificate(
-          rtc::RTCCertificate::Create(rtc::scoped_ptr<rtc::SSLIdentity>(
+          rtc::RTCCertificate::Create(std::unique_ptr<rtc::SSLIdentity>(
               rtc::SSLIdentity::Generate("session1", rtc::KT_DEFAULT))));
     }
     if (flags2 & DTLS) {
       // Confirmed to work with KT_RSA and KT_ECDSA.
       transport_controller2_.SetLocalCertificate(
-          rtc::RTCCertificate::Create(rtc::scoped_ptr<rtc::SSLIdentity>(
+          rtc::RTCCertificate::Create(std::unique_ptr<rtc::SSLIdentity>(
               rtc::SSLIdentity::Generate("session2", rtc::KT_DEFAULT))));
     }
 
@@ -981,14 +981,14 @@ class ChannelTest : public testing::Test, public sigslot::has_slots<> {
     uint16_t local_net_id = 1;
     uint16_t remote_net_id = 2;
     int last_packet_id = 100;
-    rtc::scoped_ptr<cricket::CandidatePairInterface> candidate_pair(
+    std::unique_ptr<cricket::CandidatePairInterface> candidate_pair(
         transport_controller1_.CreateFakeCandidatePair(
             local_address, local_net_id, remote_address, remote_net_id));
     transport_channel1->SignalSelectedCandidatePairChanged(
         transport_channel1, candidate_pair.get(), last_packet_id);
     EXPECT_EQ(1, media_channel1_->num_network_route_changes());
-    cricket::NetworkRoute expected_network_route(local_net_id, remote_net_id,
-                                                 last_packet_id);
+    rtc::NetworkRoute expected_network_route(local_net_id, remote_net_id,
+                                             last_packet_id);
     EXPECT_EQ(expected_network_route, media_channel1->last_network_route());
     EXPECT_EQ(last_packet_id,
               media_channel1->last_network_route().last_sent_packet_id);

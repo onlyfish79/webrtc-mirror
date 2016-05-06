@@ -11,6 +11,8 @@
 #ifndef WEBRTC_API_VIDEOCAPTURERTRACKSOURCE_H_
 #define WEBRTC_API_VIDEOCAPTURERTRACKSOURCE_H_
 
+#include <memory>
+
 #include "webrtc/api/mediastreaminterface.h"
 #include "webrtc/api/videotracksource.h"
 #include "webrtc/base/asyncinvoker.h"
@@ -47,10 +49,6 @@ class VideoCapturerTrackSource : public VideoTrackSource,
       cricket::VideoCapturer* capturer,
       bool remote);
 
-  cricket::VideoCapturer* GetVideoCapturer() override {
-    return video_capturer_.get();
-  }
-
   bool is_screencast() const override {
     return video_capturer_->IsScreencast();
   }
@@ -77,7 +75,7 @@ class VideoCapturerTrackSource : public VideoTrackSource,
   rtc::Thread* signaling_thread_;
   rtc::Thread* worker_thread_;
   rtc::AsyncInvoker invoker_;
-  rtc::scoped_ptr<cricket::VideoCapturer> video_capturer_;
+  std::unique_ptr<cricket::VideoCapturer> video_capturer_;
   bool started_;
   cricket::VideoFormat format_;
   rtc::Optional<bool> needs_denoising_;

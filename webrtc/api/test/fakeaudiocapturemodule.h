@@ -20,6 +20,8 @@
 #ifndef WEBRTC_API_TEST_FAKEAUDIOCAPTUREMODULE_H_
 #define WEBRTC_API_TEST_FAKEAUDIOCAPTUREMODULE_H_
 
+#include <memory>
+
 #include "webrtc/base/basictypes.h"
 #include "webrtc/base/criticalsection.h"
 #include "webrtc/base/messagehandler.h"
@@ -172,12 +174,12 @@ class FakeAudioCaptureModule
   int32_t ResetAudioDevice() override;
   int32_t SetLoudspeakerStatus(bool enable) override;
   int32_t GetLoudspeakerStatus(bool* enabled) const override;
-  virtual bool BuiltInAECIsAvailable() const { return false; }
-  virtual int32_t EnableBuiltInAEC(bool enable) { return -1; }
-  virtual bool BuiltInAGCIsAvailable() const { return false; }
-  virtual int32_t EnableBuiltInAGC(bool enable) { return -1; }
-  virtual bool BuiltInNSIsAvailable() const { return false; }
-  virtual int32_t EnableBuiltInNS(bool enable) { return -1; }
+  bool BuiltInAECIsAvailable() const override { return false; }
+  int32_t EnableBuiltInAEC(bool enable) override { return -1; }
+  bool BuiltInAGCIsAvailable() const override { return false; }
+  int32_t EnableBuiltInAGC(bool enable) override { return -1; }
+  bool BuiltInNSIsAvailable() const override { return false; }
+  int32_t EnableBuiltInNS(bool enable) override { return -1; }
   // End of functions inherited from webrtc::AudioDeviceModule.
 
   // The following function is inherited from rtc::MessageHandler.
@@ -247,7 +249,7 @@ class FakeAudioCaptureModule
   bool started_;
   uint32_t next_frame_time_;
 
-  rtc::scoped_ptr<rtc::Thread> process_thread_;
+  std::unique_ptr<rtc::Thread> process_thread_;
 
   // Buffer for storing samples received from the webrtc::AudioTransport.
   char rec_buffer_[kNumberSamples * kNumberBytesPerSample];

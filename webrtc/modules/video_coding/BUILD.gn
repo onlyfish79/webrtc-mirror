@@ -10,8 +10,6 @@ import("../../build/webrtc.gni")
 
 source_set("video_coding") {
   sources = [
-    "bitrate_adjuster.cc",
-    "bitrate_adjuster.h",
     "codec_database.cc",
     "codec_database.h",
     "codec_timer.cc",
@@ -107,6 +105,8 @@ source_set("video_coding_utility") {
   sources = [
     "utility/frame_dropper.cc",
     "utility/frame_dropper.h",
+    "utility/ivf_file_writer.cc",
+    "utility/ivf_file_writer.h",
     "utility/moving_average.h",
     "utility/qp_parser.cc",
     "utility/qp_parser.h",

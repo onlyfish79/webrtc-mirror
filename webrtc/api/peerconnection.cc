@@ -525,10 +525,9 @@ PeerConnection::~PeerConnection() {
 }
 
 bool PeerConnection::Initialize(
-    const cricket::MediaConfig& media_config,
     const PeerConnectionInterface::RTCConfiguration& configuration,
-    rtc::scoped_ptr<cricket::PortAllocator> allocator,
-    rtc::scoped_ptr<DtlsIdentityStoreInterface> dtls_identity_store,
+    std::unique_ptr<cricket::PortAllocator> allocator,
+    std::unique_ptr<DtlsIdentityStoreInterface> dtls_identity_store,
     PeerConnectionObserver* observer) {
   TRACE_EVENT0("webrtc", "PeerConnection::Initialize");
   RTC_DCHECK(observer != nullptr);
@@ -569,7 +568,8 @@ bool PeerConnection::Initialize(
   // No step delay is used while allocating ports.
   port_allocator_->set_step_delay(cricket::kMinimumStepDelay);
 
-  media_controller_.reset(factory_->CreateMediaController(media_config));
+  media_controller_.reset(
+      factory_->CreateMediaController(configuration.media_config));
 
   session_.reset(
       new WebRtcSession(media_controller_.get(), factory_->signaling_thread(),
@@ -628,7 +628,7 @@ bool PeerConnection::AddStream(MediaStreamInterface* local_stream) {
                                           &PeerConnection::OnVideoTrackAdded);
   observer->SignalVideoTrackRemoved.connect(
       this, &PeerConnection::OnVideoTrackRemoved);
-  stream_observers_.push_back(rtc::scoped_ptr<MediaStreamObserver>(observer));
+  stream_observers_.push_back(std::unique_ptr<MediaStreamObserver>(observer));
 
   for (const auto& track : local_stream->GetAudioTracks()) {
     OnAudioTrackAdded(track.get(), local_stream);
@@ -655,7 +655,7 @@ void PeerConnection::RemoveStream(MediaStreamInterface* local_stream) {
   stream_observers_.erase(
       std::remove_if(
           stream_observers_.begin(), stream_observers_.end(),
-          [local_stream](const rtc::scoped_ptr<MediaStreamObserver>& observer) {
+          [local_stream](const std::unique_ptr<MediaStreamObserver>& observer) {
             return observer->stream()->label().compare(local_stream->label()) ==
                    0;
           }),
@@ -835,7 +835,7 @@ PeerConnection::CreateDataChannel(
   TRACE_EVENT0("webrtc", "PeerConnection::CreateDataChannel");
   bool first_datachannel = !HasDataChannels();
 
-  rtc::scoped_ptr<InternalDataChannelInit> internal_config;
+  std::unique_ptr<InternalDataChannelInit> internal_config;
   if (config) {
     internal_config.reset(new InternalDataChannelInit(*config));
   }

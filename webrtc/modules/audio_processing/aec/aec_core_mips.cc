@@ -20,9 +20,7 @@ extern "C" {
 #include "webrtc/common_audio/signal_processing/include/signal_processing_library.h"
 }
 #include "webrtc/modules/audio_processing/aec/aec_core_internal.h"
-extern "C" {
 #include "webrtc/modules/audio_processing/aec/aec_rdft.h"
-}
 
 namespace webrtc {
 
@@ -644,7 +642,7 @@ void WebRtcAec_FilterAdaptation_mips(
   }
 }
 
-void WebRtcAec_OverdriveAndSuppress_mips(AecCore* aec,
+void WebRtcAec_OverdriveAndSuppress_mips(float overdrive_scaling,
                                          float hNl[PART_LEN1],
                                          const float hNlFb,
                                          float efw[2][PART_LEN1]) {
@@ -687,7 +685,7 @@ void WebRtcAec_OverdriveAndSuppress_mips(AecCore* aec,
       : [hNlFb] "f" (hNlFb), [one] "f" (one), [p_hNl] "r" (p_hNl)
       : "memory");
 
-    hNl[i] = powf(hNl[i], aec->overDriveSm * WebRtcAec_overDriveCurve[i]);
+    hNl[i] = powf(hNl[i], overdrive_scaling * WebRtcAec_overDriveCurve[i]);
 
     __asm __volatile(
       "lwc1      %[temp1],    0(%[p_hNl])              \n\t"
@@ -709,15 +707,10 @@ void WebRtcAec_OverdriveAndSuppress_mips(AecCore* aec,
   }
 }
 
-void WebRtcAec_ScaleErrorSignal_mips(int extended_filter_enabled,
-                                     float normal_mu,
-                                     float normal_error_threshold,
+void WebRtcAec_ScaleErrorSignal_mips(float mu,
+                                     float error_threshold,
                                      float x_pow[PART_LEN1],
                                      float ef[2][PART_LEN1]) {
-  const float mu = extended_filter_enabled ? kExtendedMu : normal_mu;
-  const float error_threshold = extended_filter_enabled
-                                    ? kExtendedErrorThreshold
-                                    : normal_error_threshold;
   int len = (PART_LEN1);
   float* ef0 = ef[0];
   float* ef1 = ef[1];

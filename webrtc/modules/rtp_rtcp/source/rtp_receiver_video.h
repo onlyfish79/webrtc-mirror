@@ -12,7 +12,6 @@
 #define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTP_RECEIVER_VIDEO_H_
 
 #include "webrtc/base/onetimeevent.h"
-#include "webrtc/base/scoped_ptr.h"
 #include "webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h"
 #include "webrtc/modules/rtp_rtcp/source/bitrate.h"
 #include "webrtc/modules/rtp_rtcp/source/rtp_receiver_strategy.h"
@@ -35,7 +34,7 @@ class RTPReceiverVideo : public RTPReceiverStrategy {
                          int64_t timestamp,
                          bool is_first_packet) override;
 
-  TelephoneEventHandler* GetTelephoneEventHandler() { return NULL; }
+  TelephoneEventHandler* GetTelephoneEventHandler() override { return NULL; }
 
   int GetPayloadTypeFrequency() const override;
 

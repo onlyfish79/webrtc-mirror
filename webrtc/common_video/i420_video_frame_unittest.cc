@@ -164,21 +164,6 @@ TEST(TestVideoFrame, ShallowCopy) {
   EXPECT_NE(frame2.rotation(), frame1.rotation());
 }
 
-TEST(TestVideoFrame, Reset) {
-  VideoFrame frame;
-  frame.CreateEmptyFrame(5, 5, 5, 5, 5);
-  frame.set_ntp_time_ms(1);
-  frame.set_timestamp(2);
-  frame.set_render_time_ms(3);
-  ASSERT_TRUE(frame.video_frame_buffer() != NULL);
-
-  frame.Reset();
-  EXPECT_EQ(0u, frame.ntp_time_ms());
-  EXPECT_EQ(0u, frame.render_time_ms());
-  EXPECT_EQ(0u, frame.timestamp());
-  EXPECT_TRUE(frame.video_frame_buffer() == NULL);
-}
-
 TEST(TestVideoFrame, CopyBuffer) {
   VideoFrame frame1, frame2;
   int width = 15;
@@ -246,7 +231,8 @@ TEST(TestVideoFrame, TextureInitialValues) {
   EXPECT_EQ(480, frame.height());
   EXPECT_EQ(100u, frame.timestamp());
   EXPECT_EQ(10, frame.render_time_ms());
-  EXPECT_EQ(handle, frame.native_handle());
+  ASSERT_TRUE(frame.video_frame_buffer() != nullptr);
+  EXPECT_EQ(handle, frame.video_frame_buffer()->native_handle());
 
   frame.set_timestamp(200);
   EXPECT_EQ(200u, frame.timestamp());
@@ -257,9 +243,9 @@ TEST(TestVideoFrame, TextureInitialValues) {
 TEST(TestI420FrameBuffer, Copy) {
   rtc::scoped_refptr<I420Buffer> buf1(
       new rtc::RefCountedObject<I420Buffer>(20, 10));
-  memset(buf1->MutableData(kYPlane), 1, 200);
-  memset(buf1->MutableData(kUPlane), 2, 50);
-  memset(buf1->MutableData(kVPlane), 3, 50);
+  memset(buf1->MutableDataY(), 1, 200);
+  memset(buf1->MutableDataU(), 2, 50);
+  memset(buf1->MutableDataV(), 3, 50);
   rtc::scoped_refptr<I420Buffer> buf2 = I420Buffer::Copy(buf1);
   EXPECT_TRUE(test::FrameBufsEqual(buf1, buf2));
 }

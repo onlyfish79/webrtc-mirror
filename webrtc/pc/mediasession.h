@@ -10,8 +10,8 @@
 
 // Types and classes used in media session descriptions.
 
-#ifndef TALK_SESSION_MEDIA_MEDIASESSION_H_
-#define TALK_SESSION_MEDIA_MEDIASESSION_H_
+#ifndef WEBRTC_PC_MEDIASESSION_H_
+#define WEBRTC_PC_MEDIASESSION_H_
 
 #include <algorithm>
 #include <map>
@@ -293,10 +293,9 @@ class MediaContentDescription : public ContentDescription {
 template <class C>
 class MediaContentDescriptionImpl : public MediaContentDescription {
  public:
-  struct PreferenceSort {
-    bool operator()(C a, C b) { return a.preference > b.preference; }
-  };
+  typedef C CodecType;
 
+  // Codecs should be in preference order (most preferred codec first).
   const std::vector<C>& codecs() const { return codecs_; }
   void set_codecs(const std::vector<C>& codecs) { codecs_ = codecs; }
   virtual bool has_codecs() const { return !codecs_.empty(); }
@@ -329,9 +328,6 @@ class MediaContentDescriptionImpl : public MediaContentDescription {
     for (codec = codecs.begin(); codec != codecs.end(); ++codec) {
       AddCodec(*codec);
     }
-  }
-  void SortCodecs() {
-    std::sort(codecs_.begin(), codecs_.end(), PreferenceSort());
   }
 
  private:
@@ -548,4 +544,4 @@ void GetDefaultSrtpCryptoSuiteNames(
 
 }  // namespace cricket
 
-#endif  // TALK_SESSION_MEDIA_MEDIASESSION_H_
+#endif  // WEBRTC_PC_MEDIASESSION_H_

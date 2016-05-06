@@ -6,7 +6,7 @@
 vars = {
   'extra_gyp_flag': '-Dextra_gyp_flag=0',
   'chromium_git': 'https://chromium.googlesource.com',
-  'chromium_revision': 'e8e08b359c588c9dd8ca4c5132c372ee6cbd2aaf',
+  'chromium_revision': '58963e58783c7534edfb01ed40bf25d1c0eb047b',
 }
 
 # NOTE: Use http rather than https; the latter can cause problems for users
@@ -87,7 +87,7 @@ hooks = [
     # A change to a .gyp, .gypi, or to GYP itself should run the generator.
     'name': 'gyp',
     'pattern': '.',
-    'action': ['python', 'src/webrtc/build/gyp_webrtc',
+    'action': ['python', 'src/webrtc/build/gyp_webrtc.py',
                Var('extra_gyp_flag')],
   },
 ]

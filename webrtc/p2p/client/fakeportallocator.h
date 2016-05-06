@@ -11,7 +11,9 @@
 #ifndef WEBRTC_P2P_CLIENT_FAKEPORTALLOCATOR_H_
 #define WEBRTC_P2P_CLIENT_FAKEPORTALLOCATOR_H_
 
+#include <memory>
 #include <string>
+
 #include "webrtc/p2p/base/basicpacketsocketfactory.h"
 #include "webrtc/p2p/base/portallocator.h"
 #include "webrtc/p2p/base/udpport.h"
@@ -118,7 +120,7 @@ class FakePortAllocatorSession : public PortAllocatorSession {
 
   void AddPort(cricket::Port* port) {
     port->set_component(component_);
-    port->set_generation(0);
+    port->set_generation(generation());
     port->SignalPortComplete.connect(
         this, &FakePortAllocatorSession::OnPortComplete);
     port->PrepareAddress();
@@ -133,7 +135,7 @@ class FakePortAllocatorSession : public PortAllocatorSession {
   rtc::Thread* worker_thread_;
   rtc::PacketSocketFactory* factory_;
   rtc::Network network_;
-  rtc::scoped_ptr<cricket::Port> port_;
+  std::unique_ptr<cricket::Port> port_;
   bool running_;
   int port_config_count_;
 };
@@ -177,7 +179,7 @@ class FakePortAllocator : public cricket::PortAllocator {
  private:
   rtc::Thread* worker_thread_;
   rtc::PacketSocketFactory* factory_;
-  rtc::scoped_ptr<rtc::BasicPacketSocketFactory> owned_factory_;
+  std::unique_ptr<rtc::BasicPacketSocketFactory> owned_factory_;
   ServerAddresses stun_servers_;
   std::vector<RelayServerConfig> turn_servers_;
 };

@@ -36,8 +36,8 @@ class VideoTrackSource : public Notifier<VideoTrackSourceInterface> {
   void Stop() override{};
   void Restart() override{};
 
-  virtual bool is_screencast() const { return false; }
-  virtual rtc::Optional<bool> needs_denoising() const {
+  bool is_screencast() const override { return false; }
+  rtc::Optional<bool> needs_denoising() const override {
     return rtc::Optional<bool>(); }
 
   bool GetStats(Stats* stats) override { return false; }
@@ -45,8 +45,6 @@ class VideoTrackSource : public Notifier<VideoTrackSourceInterface> {
   void AddOrUpdateSink(rtc::VideoSinkInterface<cricket::VideoFrame>* sink,
                        const rtc::VideoSinkWants& wants) override;
   void RemoveSink(rtc::VideoSinkInterface<cricket::VideoFrame>* sink) override;
-
-  cricket::VideoCapturer* GetVideoCapturer() override { return nullptr; }
 
  private:
   rtc::ThreadChecker worker_thread_checker_;

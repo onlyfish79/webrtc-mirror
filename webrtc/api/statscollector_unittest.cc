@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include <algorithm>
+#include <memory>
 
 #include "webrtc/api/statscollector.h"
 
@@ -32,7 +33,6 @@
 #include "webrtc/p2p/base/faketransportcontroller.h"
 #include "webrtc/pc/channelmanager.h"
 
-using rtc::scoped_ptr;
 using testing::_;
 using testing::DoAll;
 using testing::Field;
@@ -67,6 +67,10 @@ const uint32_t kSsrcOfTrack = 1234;
 
 class MockWebRtcSession : public webrtc::WebRtcSession {
  public:
+  // TODO(nisse): Valid overrides commented out, because the gmock
+  // methods don't use any override declarations, and we want to avoid
+  // warnings from -Winconsistent-missing-override. See
+  // http://crbug.com/428099.
   explicit MockWebRtcSession(webrtc::MediaControllerInterface* media_controller)
       : WebRtcSession(media_controller,
                       rtc::Thread::Current(),
@@ -84,9 +88,9 @@ class MockWebRtcSession : public webrtc::WebRtcSession {
                     rtc::scoped_refptr<rtc::RTCCertificate>* certificate));
 
   // Workaround for gmock's inability to cope with move-only return values.
-  rtc::scoped_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate(
-      const std::string& transport_name) override {
-    return rtc::scoped_ptr<rtc::SSLCertificate>(
+  std::unique_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate(
+      const std::string& transport_name) /* override */ {
+    return std::unique_ptr<rtc::SSLCertificate>(
         GetRemoteSSLCertificate_ReturnsRawPointer(transport_name));
   }
   MOCK_METHOD1(GetRemoteSSLCertificate_ReturnsRawPointer,
@@ -671,7 +675,7 @@ class StatsCollectorTest : public testing::Test {
   void TestCertificateReports(
       const rtc::FakeSSLCertificate& local_cert,
       const std::vector<std::string>& local_ders,
-      rtc::scoped_ptr<rtc::FakeSSLCertificate> remote_cert,
+      std::unique_ptr<rtc::FakeSSLCertificate> remote_cert,
       const std::vector<std::string>& remote_ders) {
     StatsCollectorForTest stats(&pc_);
 
@@ -694,7 +698,7 @@ class StatsCollectorTest : public testing::Test {
 
     // Fake certificate to report
     rtc::scoped_refptr<rtc::RTCCertificate> local_certificate(
-        rtc::RTCCertificate::Create(rtc::scoped_ptr<rtc::FakeSSLIdentity>(
+        rtc::RTCCertificate::Create(std::unique_ptr<rtc::FakeSSLIdentity>(
             new rtc::FakeSSLIdentity(local_cert))));
 
     // Configure MockWebRtcSession
@@ -757,8 +761,8 @@ class StatsCollectorTest : public testing::Test {
   }
 
   cricket::FakeMediaEngine* media_engine_;
-  rtc::scoped_ptr<cricket::ChannelManager> channel_manager_;
-  rtc::scoped_ptr<webrtc::MediaControllerInterface> media_controller_;
+  std::unique_ptr<cricket::ChannelManager> channel_manager_;
+  std::unique_ptr<webrtc::MediaControllerInterface> media_controller_;
   MockWebRtcSession session_;
   MockPeerConnection pc_;
   FakeDataChannelProvider data_channel_provider_;
@@ -1339,7 +1343,7 @@ TEST_F(StatsCollectorTest, ChainedCertificateReportsCreated) {
   remote_ders[1] = "non-";
   remote_ders[2] = "intersecting";
   remote_ders[3] = "set";
-  rtc::scoped_ptr<rtc::FakeSSLCertificate> remote_cert(
+  std::unique_ptr<rtc::FakeSSLCertificate> remote_cert(
       new rtc::FakeSSLCertificate(DersToPems(remote_ders)));
 
   TestCertificateReports(local_cert, local_ders, std::move(remote_cert),
@@ -1355,7 +1359,7 @@ TEST_F(StatsCollectorTest, ChainlessCertificateReportsCreated) {
 
   // Build remote certificate.
   std::string remote_der = "This is somebody else's der.";
-  rtc::scoped_ptr<rtc::FakeSSLCertificate> remote_cert(
+  std::unique_ptr<rtc::FakeSSLCertificate> remote_cert(
       new rtc::FakeSSLCertificate(DerToPem(remote_der)));
 
   TestCertificateReports(local_cert, std::vector<std::string>(1, local_der),
@@ -1445,7 +1449,7 @@ TEST_F(StatsCollectorTest, NoCertificates) {
       transport_stats;
 
   // Fake transport object.
-  rtc::scoped_ptr<cricket::FakeTransport> transport(
+  std::unique_ptr<cricket::FakeTransport> transport(
       new cricket::FakeTransport(transport_stats.transport_name));
 
   // Configure MockWebRtcSession
@@ -1479,7 +1483,7 @@ TEST_F(StatsCollectorTest, UnsupportedDigestIgnored) {
 
   // Build a remote certificate with an unsupported digest algorithm.
   std::string remote_der = "This is somebody else's der.";
-  rtc::scoped_ptr<rtc::FakeSSLCertificate> remote_cert(
+  std::unique_ptr<rtc::FakeSSLCertificate> remote_cert(
       new rtc::FakeSSLCertificate(DerToPem(remote_der)));
   remote_cert->set_digest_algorithm("foobar");
 

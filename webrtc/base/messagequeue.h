@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <list>
+#include <memory>
 #include <queue>
 #include <vector>
 
@@ -22,7 +23,6 @@
 #include "webrtc/base/constructormagic.h"
 #include "webrtc/base/criticalsection.h"
 #include "webrtc/base/messagehandler.h"
-#include "webrtc/base/scoped_ptr.h"
 #include "webrtc/base/scoped_ref_ptr.h"
 #include "webrtc/base/sharedexclusivelock.h"
 #include "webrtc/base/sigslot.h"
@@ -89,10 +89,11 @@ template <class T>
 class ScopedMessageData : public MessageData {
  public:
   explicit ScopedMessageData(T* data) : data_(data) { }
-  const scoped_ptr<T>& data() const { return data_; }
-  scoped_ptr<T>& data() { return data_; }
+  const std::unique_ptr<T>& data() const { return data_; }
+  std::unique_ptr<T>& data() { return data_; }
+
  private:
-  scoped_ptr<T> data_;
+  std::unique_ptr<T> data_;
 };
 
 // Like ScopedMessageData, but for reference counted pointers.
@@ -174,8 +175,8 @@ class MessageQueue {
   // init_queue and call DoInit() from their constructor to prevent races
   // with the MessageQueueManager using the object while the vtable is still
   // being created.
-  explicit MessageQueue(SocketServer* ss = NULL,
-                        bool init_queue = true);
+  MessageQueue(SocketServer* ss, bool init_queue);
+  MessageQueue(std::unique_ptr<SocketServer> ss, bool init_queue);
 
   // NOTE: SUBCLASSES OF MessageQueue THAT OVERRIDE Clear MUST CALL
   // DoDestroy() IN THEIR DESTRUCTORS! This is required to avoid a data race
@@ -275,13 +276,13 @@ class MessageQueue {
   bool fDestroyed_;
 
  private:
-  // The SocketServer is not owned by MessageQueue.
+  // The SocketServer might not be owned by MessageQueue.
   SocketServer* ss_ GUARDED_BY(ss_lock_);
-  // If a server isn't supplied in the constructor, use this one.
-  scoped_ptr<SocketServer> default_ss_;
+  // Used if SocketServer ownership lies with |this|.
+  std::unique_ptr<SocketServer> own_ss_;
   SharedExclusiveLock ss_lock_;
 
-  RTC_DISALLOW_COPY_AND_ASSIGN(MessageQueue);
+  RTC_DISALLOW_IMPLICIT_CONSTRUCTORS(MessageQueue);
 };
 
 }  // namespace rtc

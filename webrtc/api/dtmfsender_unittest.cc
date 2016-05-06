@@ -10,6 +10,7 @@
 
 #include "webrtc/api/dtmfsender.h"
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -95,7 +96,7 @@ class FakeDtmfProvider : public DtmfProviderInterface {
     return true;
   }
 
-  virtual sigslot::signal0<>* GetOnDestroyedSignal() {
+  sigslot::signal0<>* GetOnDestroyedSignal() override {
     return &SignalDestroyed;
   }
 
@@ -214,8 +215,8 @@ class DtmfSenderTest : public testing::Test {
   }
 
   rtc::scoped_refptr<AudioTrackInterface> track_;
-  rtc::scoped_ptr<FakeDtmfObserver> observer_;
-  rtc::scoped_ptr<FakeDtmfProvider> provider_;
+  std::unique_ptr<FakeDtmfObserver> observer_;
+  std::unique_ptr<FakeDtmfProvider> provider_;
   rtc::scoped_refptr<DtmfSender> dtmf_;
 };
 

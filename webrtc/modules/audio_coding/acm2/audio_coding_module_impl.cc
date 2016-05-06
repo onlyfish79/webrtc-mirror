@@ -104,7 +104,6 @@ void ConvertEncodedInfoToFragmentationHeader(
 class RawAudioEncoderWrapper final : public AudioEncoder {
  public:
   RawAudioEncoderWrapper(AudioEncoder* enc) : enc_(enc) {}
-  size_t MaxEncodedBytes() const override { return enc_->MaxEncodedBytes(); }
   int SampleRateHz() const override { return enc_->SampleRateHz(); }
   size_t NumChannels() const override { return enc_->NumChannels(); }
   int RtpTimestampRateHz() const override { return enc_->RtpTimestampRateHz(); }
@@ -119,13 +118,6 @@ class RawAudioEncoderWrapper final : public AudioEncoder {
                          rtc::ArrayView<const int16_t> audio,
                          rtc::Buffer* encoded) override {
     return enc_->Encode(rtp_timestamp, audio, encoded);
-  }
-  EncodedInfo EncodeInternal(uint32_t rtp_timestamp,
-                             rtc::ArrayView<const int16_t> audio,
-                             size_t max_encoded_bytes,
-                             uint8_t* encoded) override {
-    return enc_->EncodeInternal(rtp_timestamp, audio, max_encoded_bytes,
-                                encoded);
   }
   void Reset() override { return enc_->Reset(); }
   bool SetFec(bool enable) override { return enc_->SetFec(enable); }
@@ -727,10 +719,12 @@ int AudioCodingModuleImpl::RegisterReceiveCodecUnlocked(
 
   AudioDecoder* isac_decoder = nullptr;
   if (STR_CASE_CMP(codec.plname, "isac") == 0) {
-    if (!isac_decoder_) {
-      isac_decoder_ = isac_factory();
+    std::unique_ptr<AudioDecoder>& saved_isac_decoder =
+        codec.plfreq == 16000 ? isac_decoder_16k_ : isac_decoder_32k_;
+    if (!saved_isac_decoder) {
+      saved_isac_decoder = isac_factory();
     }
-    isac_decoder = isac_decoder_.get();
+    isac_decoder = saved_isac_decoder.get();
   }
   return receiver_.AddCodec(*codec_index, codec.pltype, codec.channels,
                             codec.plfreq, isac_decoder, codec.plname);

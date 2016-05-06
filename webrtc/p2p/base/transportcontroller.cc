@@ -11,6 +11,7 @@
 #include "webrtc/p2p/base/transportcontroller.h"
 
 #include <algorithm>
+#include <memory>
 
 #include "webrtc/base/bind.h"
 #include "webrtc/base/checks.h"
@@ -18,6 +19,10 @@
 #include "webrtc/p2p/base/dtlstransport.h"
 #include "webrtc/p2p/base/p2ptransport.h"
 #include "webrtc/p2p/base/port.h"
+
+#ifdef HAVE_QUIC
+#include "webrtc/p2p/quic/quictransport.h"
+#endif  // HAVE_QUIC
 
 namespace cricket {
 
@@ -86,10 +91,10 @@ bool TransportController::GetLocalCertificate(
                 transport_name, certificate));
 }
 
-rtc::scoped_ptr<rtc::SSLCertificate>
+std::unique_ptr<rtc::SSLCertificate>
 TransportController::GetRemoteSSLCertificate(
     const std::string& transport_name) {
-  return worker_thread_->Invoke<rtc::scoped_ptr<rtc::SSLCertificate>>(rtc::Bind(
+  return worker_thread_->Invoke<std::unique_ptr<rtc::SSLCertificate>>(rtc::Bind(
       &TransportController::GetRemoteSSLCertificate_w, this, transport_name));
 }
 
@@ -218,6 +223,11 @@ Transport* TransportController::CreateTransport_w(
     const std::string& transport_name) {
   RTC_DCHECK(worker_thread_->IsCurrent());
 
+#ifdef HAVE_QUIC
+  if (quic_) {
+    return new QuicTransport(transport_name, port_allocator(), certificate_);
+  }
+#endif  // HAVE_QUIC
   Transport* transport = new DtlsTransport<P2PTransport>(
       transport_name, port_allocator(), certificate_);
   return transport;
@@ -394,7 +404,7 @@ bool TransportController::GetLocalCertificate_w(
   return t->GetLocalCertificate(certificate);
 }
 
-rtc::scoped_ptr<rtc::SSLCertificate>
+std::unique_ptr<rtc::SSLCertificate>
 TransportController::GetRemoteSSLCertificate_w(
     const std::string& transport_name) {
   RTC_DCHECK(worker_thread_->IsCurrent());

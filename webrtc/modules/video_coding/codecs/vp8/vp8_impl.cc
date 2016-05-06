@@ -598,13 +598,14 @@ int VP8EncoderImpl::InitEncode(const VideoCodec* inst,
   }
 
   rps_.Init();
-  // Disable both high-QP limits and framedropping. Both are handled by libvpx
-  // internally.
-  const int kDisabledBadQpThreshold = 64;
-  // TODO(glaznev/sprang): consider passing codec initial bitrate to quality
-  // scaler to avoid starting with HD for low initial bitrates.
-  quality_scaler_.Init(codec_.qpMax / QualityScaler::kDefaultLowQpDenominator,
-                       kDisabledBadQpThreshold, false, 0, 0, 0,
+  // QP thresholds are chosen to be high enough to be hit in practice when
+  // quality is good, but also low enough to not cause a flip-flop behavior
+  // (e.g. going up in resolution shouldn't give so bad quality that we should
+  // go back down).
+  const int kLowQpThreshold = 29;
+  const int kBadQpThreshold = 100;
+  quality_scaler_.Init(kLowQpThreshold, kBadQpThreshold,
+                       codec_.startBitrate, codec_.width, codec_.height,
                        codec_.maxFramerate);
 
   // Only apply scaling to improve for single-layer streams. The scaling metrics
@@ -1020,6 +1021,7 @@ int VP8EncoderImpl::GetEncodedPartitions(const VideoFrame& input_image,
     encoded_images_[encoder_idx]._timeStamp = input_image.timestamp();
     encoded_images_[encoder_idx].capture_time_ms_ =
         input_image.render_time_ms();
+    encoded_images_[encoder_idx].rotation_ = input_image.rotation();
 
     int qp = -1;
     vpx_codec_control(&encoders_[encoder_idx], VP8E_GET_LAST_QUANTIZER_64, &qp);
@@ -1053,9 +1055,9 @@ int VP8EncoderImpl::GetEncodedPartitions(const VideoFrame& input_image,
   }
   if (encoders_.size() == 1 && send_stream_[0]) {
     if (encoded_images_[0]._length > 0) {
-      int qp;
-      vpx_codec_control(&encoders_[0], VP8E_GET_LAST_QUANTIZER_64, &qp);
-      quality_scaler_.ReportQP(qp);
+      int qp_128;
+      vpx_codec_control(&encoders_[0], VP8E_GET_LAST_QUANTIZER, &qp_128);
+      quality_scaler_.ReportQP(qp_128);
     } else {
       quality_scaler_.ReportDroppedFrame();
     }

@@ -512,12 +512,12 @@ void BaseChannel::OnSelectedCandidatePairChanged(
     CandidatePairInterface* selected_candidate_pair,
     int last_sent_packet_id) {
   ASSERT(channel == transport_channel_ || channel == rtcp_transport_channel_);
-  NetworkRoute network_route;
+  rtc::NetworkRoute network_route;
   if (selected_candidate_pair) {
-    network_route =
-        NetworkRoute(selected_candidate_pair->local_candidate().network_id(),
-                     selected_candidate_pair->remote_candidate().network_id(),
-                     last_sent_packet_id);
+    network_route = rtc::NetworkRoute(
+        selected_candidate_pair->local_candidate().network_id(),
+        selected_candidate_pair->remote_candidate().network_id(),
+        last_sent_packet_id);
   }
   media_channel()->OnNetworkRouteChanged(channel->transport_name(),
                                          network_route);
@@ -1690,9 +1690,11 @@ bool VideoChannel::SetSink(uint32_t ssrc,
   return true;
 }
 
-bool VideoChannel::SetCapturer(uint32_t ssrc, VideoCapturer* capturer) {
-  return InvokeOnWorker(Bind(&VideoMediaChannel::SetCapturer,
-                             media_channel(), ssrc, capturer));
+void VideoChannel::SetSource(
+    uint32_t ssrc,
+    rtc::VideoSourceInterface<cricket::VideoFrame>* source) {
+  worker_thread()->Invoke<void>(
+      Bind(&VideoMediaChannel::SetSource, media_channel(), ssrc, source));
 }
 
 bool VideoChannel::SetVideoSend(uint32_t ssrc,

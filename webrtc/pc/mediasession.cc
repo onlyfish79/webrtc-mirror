@@ -10,11 +10,12 @@
 
 #include "webrtc/pc/mediasession.h"
 
-#include <algorithm>  // For std::find_if.
+#include <algorithm>  // For std::find_if, std::sort.
 #include <functional>
 #include <map>
 #include <memory>
 #include <set>
+#include <unordered_map>
 #include <utility>
 
 #include "webrtc/base/helpers.h"
@@ -45,7 +46,7 @@ void GetSupportedCryptoSuiteNames(void (*func)(std::vector<int>*),
   }
 #endif
 }
-}
+}  // namespace
 
 namespace cricket {
 
@@ -749,7 +750,6 @@ static bool CreateMediaContentOffer(
     StreamParamsVec* current_streams,
     MediaContentDescriptionImpl<C>* offer) {
   offer->AddCodecs(codecs);
-  offer->SortCodecs();
 
   if (secure_policy == SEC_REQUIRED) {
     offer->set_crypto_required(CT_SDES);
@@ -810,6 +810,8 @@ static void NegotiateCodecs(const std::vector<C>& local_codecs,
                             std::vector<C>* negotiated_codecs) {
   for (const C& ours : local_codecs) {
     C theirs;
+    // Note that we intentionally only find one matching codec for each of our
+    // local codecs, in case the remote offer contains duplicate codecs.
     if (FindMatchingCodec(local_codecs, offered_codecs, ours, &theirs)) {
       C negotiated = ours;
       negotiated.IntersectFeedbackParams(theirs);
@@ -822,14 +824,23 @@ static void NegotiateCodecs(const std::vector<C>& local_codecs,
                             offered_apt_value);
       }
       negotiated.id = theirs.id;
-      // RFC3264: Although the answerer MAY list the formats in their desired
-      // order of preference, it is RECOMMENDED that unless there is a
-      // specific reason, the answerer list formats in the same relative order
-      // they were present in the offer.
-      negotiated.preference = theirs.preference;
       negotiated_codecs->push_back(negotiated);
     }
   }
+  // RFC3264: Although the answerer MAY list the formats in their desired
+  // order of preference, it is RECOMMENDED that unless there is a
+  // specific reason, the answerer list formats in the same relative order
+  // they were present in the offer.
+  std::unordered_map<int, int> payload_type_preferences;
+  int preference = static_cast<int>(offered_codecs.size() + 1);
+  for (const C& codec : offered_codecs) {
+    payload_type_preferences[codec.id] = preference--;
+  }
+  std::sort(negotiated_codecs->begin(), negotiated_codecs->end(),
+            [&payload_type_preferences](const C& a, const C& b) {
+              return payload_type_preferences[a.id] >
+                     payload_type_preferences[b.id];
+            });
 }
 
 // Finds a codec in |codecs2| that matches |codec_to_match|, which is
@@ -1042,7 +1053,6 @@ static bool CreateMediaContentAnswer(
   std::vector<C> negotiated_codecs;
   NegotiateCodecs(local_codecs, offer->codecs(), &negotiated_codecs);
   answer->AddCodecs(negotiated_codecs);
-  answer->SortCodecs();
   answer->set_protocol(offer->protocol());
   RtpHeaderExtensions negotiated_rtp_extensions;
   NegotiateRtpHeaderExtensions(local_rtp_extenstions,
@@ -1105,21 +1115,55 @@ static bool CreateMediaContentAnswer(
   return true;
 }
 
+static bool IsDtlsRtp(const std::string& protocol) {
+  // Most-likely values first.
+  return protocol == "UDP/TLS/RTP/SAVPF" || protocol == "TCP/TLS/RTP/SAVPF" ||
+         protocol == "UDP/TLS/RTP/SAVP" || protocol == "TCP/TLS/RTP/SAVP";
+}
+
+static bool IsPlainRtp(const std::string& protocol) {
+  // Most-likely values first.
+  return protocol == "RTP/SAVPF" || protocol == "RTP/AVPF" ||
+         protocol == "RTP/SAVP" || protocol == "RTP/AVP";
+}
+
+static bool IsDtlsSctp(const std::string& protocol) {
+  return protocol == "DTLS/SCTP";
+}
+
+static bool IsPlainSctp(const std::string& protocol) {
+  return protocol == "SCTP";
+}
+
 static bool IsMediaProtocolSupported(MediaType type,
                                      const std::string& protocol,
                                      bool secure_transport) {
-  // Data channels can have a protocol of SCTP or SCTP/DTLS.
-  if (type == MEDIA_TYPE_DATA &&
-      ((protocol == kMediaProtocolSctp && !secure_transport)||
-       (protocol == kMediaProtocolDtlsSctp && secure_transport))) {
+  // Since not all applications serialize and deserialize the media protocol,
+  // we will have to accept |protocol| to be empty.
+  if (protocol.empty()) {
     return true;
   }
 
-  // Since not all applications serialize and deserialize the media protocol,
-  // we will have to accept |protocol| to be empty.
-  return protocol == kMediaProtocolAvpf || protocol.empty() ||
-      protocol == kMediaProtocolSavpf ||
-      (protocol == kMediaProtocolDtlsSavpf && secure_transport);
+  if (type == MEDIA_TYPE_DATA) {
+    // Check for SCTP, but also for RTP for RTP-based data channels.
+    // TODO(pthatcher): Remove RTP once RTP-based data channels are gone.
+    if (secure_transport) {
+      // Most likely scenarios first.
+      return IsDtlsSctp(protocol) || IsDtlsRtp(protocol) ||
+             IsPlainRtp(protocol);
+    } else {
+      return IsPlainSctp(protocol) || IsPlainRtp(protocol);
+    }
+  }
+
+  // Allow for non-DTLS RTP protocol even when using DTLS because that's what
+  // JSEP specifies.
+  if (secure_transport) {
+    // Most likely scenarios first.
+    return IsDtlsRtp(protocol) || IsPlainRtp(protocol);
+  } else {
+    return IsPlainRtp(protocol);
+  }
 }
 
 static void SetMediaProtocol(bool secure_transport,
@@ -1365,8 +1409,8 @@ SessionDescription* MediaSessionDescriptionFactory::CreateAnswer(
     const SessionDescription* offer, const MediaSessionOptions& options,
     const SessionDescription* current_description) const {
   // The answer contains the intersection of the codecs in the offer with the
-  // codecs we support, ordered by our local preference. As indicated by
-  // XEP-0167, we retain the same payload ids from the offer in the answer.
+  // codecs we support. As indicated by XEP-0167, we retain the same payload ids
+  // from the offer in the answer.
   std::unique_ptr<SessionDescription> answer(new SessionDescription());
 
   StreamParamsVec current_streams;

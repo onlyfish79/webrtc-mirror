@@ -114,7 +114,10 @@ config("common_config") {
     }
 
     if (is_clang) {
-      cflags += [ "-Wthread-safety" ]
+      cflags += [
+        "-Wimplicit-fallthrough",
+        "-Wthread-safety",
+      ]
     }
   }
 
@@ -169,7 +172,6 @@ source_set("webrtc") {
   sources = [
     "call.h",
     "config.h",
-    "frame_callback.h",
     "transport.h",
   ]
 
@@ -202,10 +204,7 @@ source_set("webrtc") {
   ]
 
   if (build_with_chromium) {
-    deps += [
-      "modules/video_capture",
-      "modules/video_render",
-    ]
+    deps += [ "modules/video_capture" ]
   }
 
   if (rtc_enable_protobuf) {
@@ -220,7 +219,6 @@ if (!build_with_chromium) {
     deps = [
       ":webrtc",
       "modules/video_capture:video_capture_internal_impl",
-      "modules/video_render:video_render_internal_impl",
       "test",
     ]
   }
@@ -260,6 +258,8 @@ source_set("rtc_event_log") {
   sources = [
     "call/rtc_event_log.cc",
     "call/rtc_event_log.h",
+    "call/rtc_event_log_helper_thread.cc",
+    "call/rtc_event_log_helper_thread.h",
   ]
 
   defines = []

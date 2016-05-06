@@ -10,6 +10,7 @@
 
 #include <stddef.h>  // size_t
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -262,6 +263,8 @@ void DebugDumpTest::VerifyDebugDump(const std::string& in_filename) {
   }
 }
 
+// Disabled for UBSan: https://bugs.chromium.org/p/webrtc/issues/detail?id=5820
+#ifndef UNDEFINED_SANITIZER
 TEST_F(DebugDumpTest, SimpleCase) {
   Config config;
   DebugDumpGenerator generator(config);
@@ -341,6 +344,129 @@ TEST_F(DebugDumpTest, ToggleDelayAgnosticAec) {
   VerifyDebugDump(generator.dump_file_name());
 }
 
+TEST_F(DebugDumpTest, VerifyRefinedAdaptiveFilterExperimentalString) {
+  Config config;
+  config.Set<RefinedAdaptiveFilter>(new RefinedAdaptiveFilter(true));
+  DebugDumpGenerator generator(config);
+  generator.StartRecording();
+  generator.Process(100);
+  generator.StopRecording();
+
+  DebugDumpReplayer debug_dump_replayer_;
+
+  ASSERT_TRUE(debug_dump_replayer_.SetDumpFile(generator.dump_file_name()));
+
+  while (const rtc::Optional<audioproc::Event> event =
+             debug_dump_replayer_.GetNextEvent()) {
+    debug_dump_replayer_.RunNextEvent();
+    if (event->type() == audioproc::Event::CONFIG) {
+      const audioproc::Config* msg = &event->config();
+      ASSERT_TRUE(msg->has_experiments_description());
+      EXPECT_PRED_FORMAT2(testing::IsSubstring, "RefinedAdaptiveFilter",
+                          msg->experiments_description().c_str());
+    }
+  }
+}
+
+TEST_F(DebugDumpTest, VerifyCombinedExperimentalStringInclusive) {
+  Config config;
+  config.Set<RefinedAdaptiveFilter>(new RefinedAdaptiveFilter(true));
+  config.Set<EchoCanceller3>(new EchoCanceller3(true));
+  DebugDumpGenerator generator(config);
+  generator.StartRecording();
+  generator.Process(100);
+  generator.StopRecording();
+
+  DebugDumpReplayer debug_dump_replayer_;
+
+  ASSERT_TRUE(debug_dump_replayer_.SetDumpFile(generator.dump_file_name()));
+
+  while (const rtc::Optional<audioproc::Event> event =
+             debug_dump_replayer_.GetNextEvent()) {
+    debug_dump_replayer_.RunNextEvent();
+    if (event->type() == audioproc::Event::CONFIG) {
+      const audioproc::Config* msg = &event->config();
+      ASSERT_TRUE(msg->has_experiments_description());
+      EXPECT_PRED_FORMAT2(testing::IsSubstring, "RefinedAdaptiveFilter",
+                          msg->experiments_description().c_str());
+      EXPECT_PRED_FORMAT2(testing::IsSubstring, "AEC3",
+                          msg->experiments_description().c_str());
+    }
+  }
+}
+
+TEST_F(DebugDumpTest, VerifyCombinedExperimentalStringExclusive) {
+  Config config;
+  config.Set<RefinedAdaptiveFilter>(new RefinedAdaptiveFilter(true));
+  DebugDumpGenerator generator(config);
+  generator.StartRecording();
+  generator.Process(100);
+  generator.StopRecording();
+
+  DebugDumpReplayer debug_dump_replayer_;
+
+  ASSERT_TRUE(debug_dump_replayer_.SetDumpFile(generator.dump_file_name()));
+
+  while (const rtc::Optional<audioproc::Event> event =
+             debug_dump_replayer_.GetNextEvent()) {
+    debug_dump_replayer_.RunNextEvent();
+    if (event->type() == audioproc::Event::CONFIG) {
+      const audioproc::Config* msg = &event->config();
+      ASSERT_TRUE(msg->has_experiments_description());
+      EXPECT_PRED_FORMAT2(testing::IsSubstring, "RefinedAdaptiveFilter",
+                          msg->experiments_description().c_str());
+      EXPECT_PRED_FORMAT2(testing::IsNotSubstring, "AEC3",
+                          msg->experiments_description().c_str());
+    }
+  }
+}
+
+TEST_F(DebugDumpTest, VerifyAec3ExperimentalString) {
+  Config config;
+  config.Set<EchoCanceller3>(new EchoCanceller3(true));
+  DebugDumpGenerator generator(config);
+  generator.StartRecording();
+  generator.Process(100);
+  generator.StopRecording();
+
+  DebugDumpReplayer debug_dump_replayer_;
+
+  ASSERT_TRUE(debug_dump_replayer_.SetDumpFile(generator.dump_file_name()));
+
+  while (const rtc::Optional<audioproc::Event> event =
+             debug_dump_replayer_.GetNextEvent()) {
+    debug_dump_replayer_.RunNextEvent();
+    if (event->type() == audioproc::Event::CONFIG) {
+      const audioproc::Config* msg = &event->config();
+      ASSERT_TRUE(msg->has_experiments_description());
+      EXPECT_PRED_FORMAT2(testing::IsSubstring, "AEC3",
+                          msg->experiments_description().c_str());
+    }
+  }
+}
+
+TEST_F(DebugDumpTest, VerifyEmptyExperimentalString) {
+  Config config;
+  DebugDumpGenerator generator(config);
+  generator.StartRecording();
+  generator.Process(100);
+  generator.StopRecording();
+
+  DebugDumpReplayer debug_dump_replayer_;
+
+  ASSERT_TRUE(debug_dump_replayer_.SetDumpFile(generator.dump_file_name()));
+
+  while (const rtc::Optional<audioproc::Event> event =
+             debug_dump_replayer_.GetNextEvent()) {
+    debug_dump_replayer_.RunNextEvent();
+    if (event->type() == audioproc::Event::CONFIG) {
+      const audioproc::Config* msg = &event->config();
+      ASSERT_TRUE(msg->has_experiments_description());
+      EXPECT_EQ(0u, msg->experiments_description().size());
+    }
+  }
+}
+
 TEST_F(DebugDumpTest, ToggleAecLevel) {
   Config config;
   DebugDumpGenerator generator(config);
@@ -401,6 +527,8 @@ TEST_F(DebugDumpTest, TransientSuppressionOn) {
   generator.StopRecording();
   VerifyDebugDump(generator.dump_file_name());
 }
+
+#endif  // !UNDEFINED_SANITIZER
 
 }  // namespace test
 }  // namespace webrtc

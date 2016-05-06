@@ -12,6 +12,7 @@
 #define WEBRTC_P2P_BASE_TRANSPORTCONTROLLER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -59,7 +60,7 @@ class TransportController : public sigslot::has_slots<>,
       const std::string& transport_name,
       rtc::scoped_refptr<rtc::RTCCertificate>* certificate);
   // Caller owns returned certificate
-  rtc::scoped_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate(
+  std::unique_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate(
       const std::string& transport_name);
   bool SetLocalTransportDescription(const std::string& transport_name,
                                     const TransportDescription& tdesc,
@@ -89,6 +90,9 @@ class TransportController : public sigslot::has_slots<>,
   // nothing is referencing it.
   virtual void DestroyTransportChannel_w(const std::string& transport_name,
                                          int component);
+
+  void use_quic() { quic_ = true; }
+  bool quic() const { return quic_; }
 
   // All of these signals are fired on the signalling thread.
 
@@ -166,7 +170,7 @@ class TransportController : public sigslot::has_slots<>,
   bool GetLocalCertificate_w(
       const std::string& transport_name,
       rtc::scoped_refptr<rtc::RTCCertificate>* certificate);
-  rtc::scoped_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate_w(
+  std::unique_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate_w(
       const std::string& transport_name);
   bool SetLocalTransportDescription_w(const std::string& transport_name,
                                       const TransportDescription& tdesc,
@@ -221,6 +225,8 @@ class TransportController : public sigslot::has_slots<>,
   uint64_t ice_tiebreaker_ = rtc::CreateRandomId64();
   rtc::scoped_refptr<rtc::RTCCertificate> certificate_;
   rtc::AsyncInvoker invoker_;
+  // True if QUIC is used instead of DTLS.
+  bool quic_ = false;
 };
 
 }  // namespace cricket

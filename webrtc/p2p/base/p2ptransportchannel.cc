@@ -390,10 +390,15 @@ void P2PTransportChannel::SetRemoteIceCredentials(const std::string& ice_ufrag,
       candidate.set_password(ice_pwd);
     }
   }
-  // We need to update the credentials for any peer reflexive candidates.
+  // We need to update the credentials and generation for any peer reflexive
+  // candidates.
   for (Connection* conn : connections_) {
-    conn->MaybeSetRemoteIceCredentials(ice_ufrag, ice_pwd);
+    conn->MaybeSetRemoteIceCredentialsAndGeneration(
+        ice_ufrag, ice_pwd,
+        static_cast<int>(remote_ice_parameters_.size() - 1));
   }
+  // Updating the remote ICE candidate generation could change the sort order.
+  RequestSort();
 }
 
 void P2PTransportChannel::SetRemoteIceMode(IceMode mode) {
@@ -1034,7 +1039,7 @@ rtc::DiffServCodePoint P2PTransportChannel::DefaultDscpValue() const {
 
 // Monitor connection states.
 void P2PTransportChannel::UpdateConnectionStates() {
-  int64_t now = rtc::Time64();
+  int64_t now = rtc::TimeMillis();
 
   // We need to copy the list of connections since some may delete themselves
   // when we call UpdateState.
@@ -1279,7 +1284,7 @@ void P2PTransportChannel::OnCheckAndPing() {
   // When the best connection is either not receiving or not writable,
   // switch to weak ping interval.
   int ping_interval = weak() ? weak_ping_interval_ : STRONG_PING_INTERVAL;
-  if (rtc::Time64() >= last_ping_sent_ms_ + ping_interval) {
+  if (rtc::TimeMillis() >= last_ping_sent_ms_ + ping_interval) {
     Connection* conn = FindNextPingableConnection();
     if (conn) {
       PingConnection(conn);
@@ -1338,7 +1343,7 @@ bool P2PTransportChannel::IsPingable(Connection* conn, int64_t now) {
 // ping target to become writable instead. See the big comment in
 // CompareConnections.
 Connection* P2PTransportChannel::FindNextPingableConnection() {
-  int64_t now = rtc::Time64();
+  int64_t now = rtc::TimeMillis();
   Connection* conn_to_ping = nullptr;
   if (best_connection_ && best_connection_->connected() &&
       best_connection_->writable() &&
@@ -1379,7 +1384,7 @@ void P2PTransportChannel::PingConnection(Connection* conn) {
     use_candidate = best_connection_->writable();
   }
   conn->set_use_candidate_attr(use_candidate);
-  last_ping_sent_ms_ = rtc::Time64();
+  last_ping_sent_ms_ = rtc::TimeMillis();
   conn->Ping(last_ping_sent_ms_);
 }
 
@@ -1400,10 +1405,14 @@ void P2PTransportChannel::OnConnectionStateChange(Connection* connection) {
   }
 
   // May stop the allocator session when at least one connection becomes
-  // strongly connected after starting to get ports. It is not enough to check
+  // strongly connected after starting to get ports and the local candidate of
+  // the connection is at the latest generation. It is not enough to check
   // that the connection becomes weakly connected because the connection may be
   // changing from (writable, receiving) to (writable, not receiving).
-  if (!connection->weak()) {
+  bool strongly_connected = !connection->weak();
+  bool latest_generation = connection->local_candidate().generation() >=
+                           allocator_session()->generation();
+  if (strongly_connected && latest_generation) {
     MaybeStopPortAllocatorSessions();
   }
 

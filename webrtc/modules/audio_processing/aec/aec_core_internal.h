@@ -11,12 +11,16 @@
 #ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AEC_AEC_CORE_INTERNAL_H_
 #define WEBRTC_MODULES_AUDIO_PROCESSING_AEC_AEC_CORE_INTERNAL_H_
 
+#include <memory>
+
 extern "C" {
 #include "webrtc/common_audio/ring_buffer.h"
 }
+#include "webrtc/base/constructormagic.h"
 #include "webrtc/common_audio/wav_file.h"
 #include "webrtc/modules/audio_processing/aec/aec_common.h"
 #include "webrtc/modules/audio_processing/aec/aec_core.h"
+#include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
 #include "webrtc/modules/audio_processing/utility/block_mean_calculator.h"
 #include "webrtc/typedefs.h"
 
@@ -34,11 +38,6 @@ enum {
   // 500 ms for 16 kHz which is equivalent with the limit of reported delays.
   kHistorySizeBlocks = 125
 };
-
-// Extended filter adaptation parameters.
-// TODO(ajm): No narrowband tuning yet.
-static const float kExtendedMu = 0.4f;
-static const float kExtendedErrorThreshold = 1.0e-6f;
 
 typedef struct PowerLevel {
   PowerLevel();
@@ -74,7 +73,10 @@ class DivergentFilterFraction {
 };
 
 struct AecCore {
-  AecCore();
+  explicit AecCore(int instance_index);
+  ~AecCore();
+
+  std::unique_ptr<ApmDataDumper> data_dumper;
 
   int farBufWritePos, farBufReadPos;
 
@@ -111,7 +113,8 @@ struct AecCore {
   float hNlFbMin, hNlFbLocalMin;
   float hNlXdAvgMin;
   int hNlNewMin, hNlMinCtr;
-  float overDrive, overDriveSm;
+  float overDrive;
+  float overdrive_scaling;
   int nlp_mode;
   float outBuf[PART_LEN];
   int delayIdx;
@@ -126,12 +129,12 @@ struct AecCore {
   int system_delay;  // Current system delay buffered in AEC.
 
   int mult;  // sampling frequency multiple
-  int sampFreq;
+  int sampFreq = 16000;
   size_t num_bands;
   uint32_t seed;
 
-  float normal_mu;               // stepsize
-  float normal_error_threshold;  // error threshold
+  float filter_step_size;  // stepsize
+  float error_threshold;   // error threshold
 
   int noiseEstCtr;
 
@@ -178,6 +181,7 @@ struct AecCore {
   int extended_filter_enabled;
   // 1 = next generation aec mode enabled, 0 = disabled.
   int aec3_enabled;
+  bool refined_adaptive_filter_enabled;
 
   // Runtime selection of number of filter partitions.
   int num_partitions;
@@ -185,22 +189,6 @@ struct AecCore {
   // Flag that extreme filter divergence has been detected by the Echo
   // Suppressor.
   int extreme_filter_divergence;
-
-#ifdef WEBRTC_AEC_DEBUG_DUMP
-  // Sequence number of this AEC instance, so that different instances can
-  // choose different dump file names.
-  int instance_index;
-
-  // Number of times we've restarted dumping; used to pick new dump file names
-  // each time.
-  int debug_dump_count;
-
-  rtc_WavWriter* farFile;
-  rtc_WavWriter* nearFile;
-  rtc_WavWriter* outFile;
-  rtc_WavWriter* outLinearFile;
-  FILE* e_fft_file;
-#endif
 };
 
 typedef void (*WebRtcAecFilterFar)(
@@ -210,9 +198,8 @@ typedef void (*WebRtcAecFilterFar)(
     float h_fft_buf[2][kExtendedNumPartitions * PART_LEN1],
     float y_fft[2][PART_LEN1]);
 extern WebRtcAecFilterFar WebRtcAec_FilterFar;
-typedef void (*WebRtcAecScaleErrorSignal)(int extended_filter_enabled,
-                                          float normal_mu,
-                                          float normal_error_threshold,
+typedef void (*WebRtcAecScaleErrorSignal)(float mu,
+                                          float error_threshold,
                                           float x_pow[PART_LEN1],
                                           float ef[2][PART_LEN1]);
 extern WebRtcAecScaleErrorSignal WebRtcAec_ScaleErrorSignal;
@@ -223,7 +210,7 @@ typedef void (*WebRtcAecFilterAdaptation)(
     float e_fft[2][PART_LEN1],
     float h_fft_buf[2][kExtendedNumPartitions * PART_LEN1]);
 extern WebRtcAecFilterAdaptation WebRtcAec_FilterAdaptation;
-typedef void (*WebRtcAecOverdriveAndSuppress)(AecCore* aec,
+typedef void (*WebRtcAecOverdriveAndSuppress)(float overdrive_scaling,
                                               float hNl[PART_LEN1],
                                               const float hNlFb,
                                               float efw[2][PART_LEN1]);

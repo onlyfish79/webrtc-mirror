@@ -21,9 +21,12 @@
 #define WEBRTC_P2P_BASE_P2PTRANSPORTCHANNEL_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
+
+#include "webrtc/base/constructormagic.h"
 #include "webrtc/p2p/base/candidate.h"
 #include "webrtc/p2p/base/candidatepairinterface.h"
 #include "webrtc/p2p/base/p2ptransport.h"
@@ -144,7 +147,7 @@ class P2PTransportChannel : public TransportChannelImpl,
     return nullptr;
   }
 
-  rtc::scoped_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate()
+  std::unique_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate()
       const override {
     return nullptr;
   }

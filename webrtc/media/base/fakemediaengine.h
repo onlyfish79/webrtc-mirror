@@ -179,7 +179,7 @@ template <class Base> class RtpHelper : public Base {
     return ready_to_send_;
   }
 
-  NetworkRoute last_network_route() const { return last_network_route_; }
+  rtc::NetworkRoute last_network_route() const { return last_network_route_; }
   int num_network_route_changes() const { return num_network_route_changes_; }
   void set_num_network_route_changes(int changes) {
     num_network_route_changes_ = changes;
@@ -224,7 +224,7 @@ template <class Base> class RtpHelper : public Base {
     ready_to_send_ = ready;
   }
   virtual void OnNetworkRouteChanged(const std::string& transport_name,
-                                     const NetworkRoute& network_route) {
+                                     const rtc::NetworkRoute& network_route) {
     last_network_route_ = network_route;
     ++num_network_route_changes_;
   }
@@ -247,7 +247,7 @@ template <class Base> class RtpHelper : public Base {
   uint32_t send_ssrc_;
   std::string rtcp_cname_;
   bool ready_to_send_;
-  NetworkRoute last_network_route_;
+  rtc::NetworkRoute last_network_route_;
   int num_network_route_changes_ = 0;
 };
 
@@ -482,23 +482,23 @@ class FakeVideoMediaChannel : public RtpHelper<VideoMediaChannel> {
     return sinks_;
   }
   int max_bps() const { return max_bps_; }
-  virtual bool SetSendParameters(const VideoSendParameters& params) {
+  bool SetSendParameters(const VideoSendParameters& params) override {
     return (SetSendCodecs(params.codecs) &&
             SetSendRtpHeaderExtensions(params.extensions) &&
             SetMaxSendBandwidth(params.max_bandwidth_bps));
   }
-  virtual bool SetRecvParameters(const VideoRecvParameters& params) {
+  bool SetRecvParameters(const VideoRecvParameters& params) override {
     return (SetRecvCodecs(params.codecs) &&
             SetRecvRtpHeaderExtensions(params.extensions));
   }
-  virtual bool AddSendStream(const StreamParams& sp) {
+  bool AddSendStream(const StreamParams& sp) override {
     return RtpHelper<VideoMediaChannel>::AddSendStream(sp);
   }
-  virtual bool RemoveSendStream(uint32_t ssrc) {
+  bool RemoveSendStream(uint32_t ssrc) override {
     return RtpHelper<VideoMediaChannel>::RemoveSendStream(ssrc);
   }
 
-  virtual bool GetSendCodec(VideoCodec* send_codec) {
+  bool GetSendCodec(VideoCodec* send_codec) override {
     if (send_codecs_.empty()) {
       return false;
     }
@@ -516,9 +516,9 @@ class FakeVideoMediaChannel : public RtpHelper<VideoMediaChannel> {
     return true;
   }
 
-  virtual bool SetSend(bool send) { return set_sending(send); }
-  virtual bool SetVideoSend(uint32_t ssrc, bool enable,
-                            const VideoOptions* options) {
+  bool SetSend(bool send) override { return set_sending(send); }
+  bool SetVideoSend(uint32_t ssrc, bool enable,
+                    const VideoOptions* options) override {
     if (!RtpHelper<VideoMediaChannel>::MuteStream(ssrc, !enable)) {
       return false;
     }
@@ -527,27 +527,29 @@ class FakeVideoMediaChannel : public RtpHelper<VideoMediaChannel> {
     }
     return true;
   }
-  virtual bool SetCapturer(uint32_t ssrc, VideoCapturer* capturer) {
-    capturers_[ssrc] = capturer;
-    return true;
+  void SetSource(
+      uint32_t ssrc,
+      rtc::VideoSourceInterface<cricket::VideoFrame>* source) override {
+    sources_[ssrc] = source;
   }
-  bool HasCapturer(uint32_t ssrc) const {
-    return capturers_.find(ssrc) != capturers_.end();
+
+  bool HasSource(uint32_t ssrc) const {
+    return sources_.find(ssrc) != sources_.end();
   }
-  virtual bool AddRecvStream(const StreamParams& sp) {
+  bool AddRecvStream(const StreamParams& sp) override {
     if (!RtpHelper<VideoMediaChannel>::AddRecvStream(sp))
       return false;
     sinks_[sp.first_ssrc()] = NULL;
     return true;
   }
-  virtual bool RemoveRecvStream(uint32_t ssrc) {
+  bool RemoveRecvStream(uint32_t ssrc) override {
     if (!RtpHelper<VideoMediaChannel>::RemoveRecvStream(ssrc))
       return false;
     sinks_.erase(ssrc);
     return true;
   }
 
-  virtual bool GetStats(VideoMediaInfo* info) { return false; }
+  bool GetStats(VideoMediaInfo* info) override { return false; }
 
  private:
   bool SetRecvCodecs(const std::vector<VideoCodec>& codecs) {
@@ -580,7 +582,7 @@ class FakeVideoMediaChannel : public RtpHelper<VideoMediaChannel> {
   std::vector<VideoCodec> recv_codecs_;
   std::vector<VideoCodec> send_codecs_;
   std::map<uint32_t, rtc::VideoSinkInterface<VideoFrame>*> sinks_;
-  std::map<uint32_t, VideoCapturer*> capturers_;
+  std::map<uint32_t, rtc::VideoSourceInterface<VideoFrame>*> sources_;
   VideoOptions options_;
   int max_bps_;
 };
@@ -700,7 +702,7 @@ class FakeVoiceEngine : public FakeBaseEngine {
       : output_volume_(-1) {
     // Add a fake audio codec. Note that the name must not be "" as there are
     // sanity checks against that.
-    codecs_.push_back(AudioCodec(101, "fake_audio_codec", 0, 0, 1, 0));
+    codecs_.push_back(AudioCodec(101, "fake_audio_codec", 0, 0, 1));
   }
   rtc::scoped_refptr<webrtc::AudioState> GetAudioState() const {
     return rtc::scoped_refptr<webrtc::AudioState>();
@@ -761,7 +763,7 @@ class FakeVideoEngine : public FakeBaseEngine {
   FakeVideoEngine() : capture_(false) {
     // Add a fake video codec. Note that the name must not be "" as there are
     // sanity checks against that.
-    codecs_.push_back(VideoCodec(0, "fake_video_codec", 0, 0, 0, 0));
+    codecs_.push_back(VideoCodec(0, "fake_video_codec", 0, 0, 0));
   }
   void Init() {}
   bool SetOptions(const VideoOptions& options) {

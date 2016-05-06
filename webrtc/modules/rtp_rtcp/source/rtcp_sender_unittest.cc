@@ -8,10 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-
-/*
- * This file includes unit tests for the RTCPSender.
- */
+#include <memory>
 
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -261,9 +258,9 @@ class RtcpSenderTest : public ::testing::Test {
 
   SimulatedClock clock_;
   TestTransport test_transport_;
-  rtc::scoped_ptr<ReceiveStatistics> receive_statistics_;
-  rtc::scoped_ptr<ModuleRtpRtcpImpl> rtp_rtcp_impl_;
-  rtc::scoped_ptr<RTCPSender> rtcp_sender_;
+  std::unique_ptr<ReceiveStatistics> receive_statistics_;
+  std::unique_ptr<ModuleRtpRtcpImpl> rtp_rtcp_impl_;
+  std::unique_ptr<RTCPSender> rtcp_sender_;
 };
 
 TEST_F(RtcpSenderTest, SetRtcpStatus) {
@@ -461,6 +458,7 @@ TEST_F(RtcpSenderTest, SendRpsi) {
   feedback_state.send_payload_type = kPayloadType;
   EXPECT_EQ(0, rtcp_sender_->SendRTCP(feedback_state, kRtcpRpsi, 0, nullptr,
                                       false, kPictureId));
+  EXPECT_EQ(1, parser()->rpsi()->num_packets());
   EXPECT_EQ(kPayloadType, parser()->rpsi()->PayloadType());
   EXPECT_EQ(kPictureId, parser()->rpsi()->PictureId());
 }

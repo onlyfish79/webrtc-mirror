@@ -154,7 +154,7 @@
           'target_name': 'apprtc_common',
           'type': 'static_library',
           'dependencies': [
-            '<(webrtc_root)/base/base.gyp:rtc_base_objc',
+            '<(webrtc_root)/sdk/sdk.gyp:rtc_sdk_common_objc',
             '<(webrtc_root)/system_wrappers/system_wrappers.gyp:field_trial_default',
           ],
           'sources': [
@@ -201,8 +201,7 @@
           'target_name': 'apprtc_signaling',
           'type': 'static_library',
           'dependencies': [
-            '<(webrtc_root)/api/api.gyp:rtc_api_objc',
-            '<(webrtc_root)/base/base.gyp:rtc_base_objc',
+            '<(webrtc_root)/sdk/sdk.gyp:rtc_sdk_peerconnection_objc',
             'apprtc_common',
             'socketrocket',
           ],
@@ -251,7 +250,7 @@
             ],
           },
           'export_dependent_settings': [
-            '<(webrtc_root)/api/api.gyp:rtc_api_objc',
+            '<(webrtc_root)/sdk/sdk.gyp:rtc_sdk_peerconnection_objc',
           ],
           'conditions': [
             ['OS=="ios"', {
@@ -454,8 +453,13 @@
             'apk_name': 'AppRTCDemoTest',
             'java_in_dir': 'examples/androidtests',
             'is_test_apk': 1,
+            'test_type': 'instrumentation',
+            'test_runner_path': '<(DEPTH)/webrtc/build/android/test_runner.py',
           },
-          'includes': [ '../build/java_apk.gypi' ],
+          'includes': [
+            '../build/java_apk.gypi',
+            '../build/android/test_runner.gypi',
+          ],
         },
       ],  # targets
     }],  # OS=="android"

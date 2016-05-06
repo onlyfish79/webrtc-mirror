@@ -21,9 +21,7 @@ extern "C" {
 }
 #include "webrtc/modules/audio_processing/aec/aec_common.h"
 #include "webrtc/modules/audio_processing/aec/aec_core_internal.h"
-extern "C" {
 #include "webrtc/modules/audio_processing/aec/aec_rdft.h"
-}
 
 namespace webrtc {
 
@@ -81,17 +79,13 @@ static void FilterFarSSE2(int num_partitions,
   }
 }
 
-static void ScaleErrorSignalSSE2(int extended_filter_enabled,
-                                 float normal_mu,
-                                 float normal_error_threshold,
+static void ScaleErrorSignalSSE2(float mu,
+                                 float error_threshold,
                                  float x_pow[PART_LEN1],
                                  float ef[2][PART_LEN1]) {
   const __m128 k1e_10f = _mm_set1_ps(1e-10f);
-  const __m128 kMu = extended_filter_enabled ? _mm_set1_ps(kExtendedMu)
-                                             : _mm_set1_ps(normal_mu);
-  const __m128 kThresh = extended_filter_enabled
-                             ? _mm_set1_ps(kExtendedErrorThreshold)
-                             : _mm_set1_ps(normal_error_threshold);
+  const __m128 kMu = _mm_set1_ps(mu);
+  const __m128 kThresh = _mm_set1_ps(error_threshold);
 
   int i;
   // vectorized code (four at once)
@@ -126,10 +120,6 @@ static void ScaleErrorSignalSSE2(int extended_filter_enabled,
   }
   // scalar code for the remaining items.
   {
-    const float mu = extended_filter_enabled ? kExtendedMu : normal_mu;
-    const float error_threshold = extended_filter_enabled
-                                      ? kExtendedErrorThreshold
-                                      : normal_error_threshold;
     for (; i < (PART_LEN1); i++) {
       float abs_ef;
       ef[0][i] /= (x_pow[i] + 1e-10f);
@@ -385,7 +375,7 @@ static __m128 mm_pow_ps(__m128 a, __m128 b) {
   return a_exp_b;
 }
 
-static void OverdriveAndSuppressSSE2(AecCore* aec,
+static void OverdriveAndSuppressSSE2(float overdrive_scaling,
                                      float hNl[PART_LEN1],
                                      const float hNlFb,
                                      float efw[2][PART_LEN1]) {
@@ -393,7 +383,7 @@ static void OverdriveAndSuppressSSE2(AecCore* aec,
   const __m128 vec_hNlFb = _mm_set1_ps(hNlFb);
   const __m128 vec_one = _mm_set1_ps(1.0f);
   const __m128 vec_minus_one = _mm_set1_ps(-1.0f);
-  const __m128 vec_overDriveSm = _mm_set1_ps(aec->overDriveSm);
+  const __m128 vec_overdrive_scaling = _mm_set1_ps(overdrive_scaling);
   // vectorized code (four at once)
   for (i = 0; i + 3 < PART_LEN1; i += 4) {
     // Weight subbands
@@ -413,7 +403,7 @@ static void OverdriveAndSuppressSSE2(AecCore* aec,
       const __m128 vec_overDriveCurve =
           _mm_loadu_ps(&WebRtcAec_overDriveCurve[i]);
       const __m128 vec_overDriveSm_overDriveCurve =
-          _mm_mul_ps(vec_overDriveSm, vec_overDriveCurve);
+          _mm_mul_ps(vec_overdrive_scaling, vec_overDriveCurve);
       vec_hNl = mm_pow_ps(vec_hNl, vec_overDriveSm_overDriveCurve);
       _mm_storeu_ps(&hNl[i], vec_hNl);
     }
@@ -439,7 +429,7 @@ static void OverdriveAndSuppressSSE2(AecCore* aec,
       hNl[i] = WebRtcAec_weightCurve[i] * hNlFb +
                (1 - WebRtcAec_weightCurve[i]) * hNl[i];
     }
-    hNl[i] = powf(hNl[i], aec->overDriveSm * WebRtcAec_overDriveCurve[i]);
+    hNl[i] = powf(hNl[i], overdrive_scaling * WebRtcAec_overDriveCurve[i]);
 
     // Suppress error signal
     efw[0][i] *= hNl[i];

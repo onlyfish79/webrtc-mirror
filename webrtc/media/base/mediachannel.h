@@ -17,6 +17,7 @@
 
 #include "webrtc/api/rtpparameters.h"
 #include "webrtc/base/basictypes.h"
+#include "webrtc/base/buffer.h"
 #include "webrtc/base/copyonwritebuffer.h"
 #include "webrtc/base/dscp.h"
 #include "webrtc/base/logging.h"
@@ -29,11 +30,11 @@
 #include "webrtc/media/base/mediaconstants.h"
 #include "webrtc/media/base/streamparams.h"
 #include "webrtc/media/base/videosinkinterface.h"
+#include "webrtc/media/base/videosourceinterface.h"
 // TODO(juberti): re-evaluate this include
 #include "webrtc/pc/audiomonitor.h"
 
 namespace rtc {
-class Buffer;
 class RateLimiter;
 class Timing;
 }
@@ -391,8 +392,9 @@ class MediaChannel : public sigslot::has_slots<> {
   // Called when the socket's ability to send has changed.
   virtual void OnReadyToSend(bool ready) = 0;
   // Called when the network route used for sending packets changed.
-  virtual void OnNetworkRouteChanged(const std::string& transport_name,
-                                     const NetworkRoute& network_route) = 0;
+  virtual void OnNetworkRouteChanged(
+      const std::string& transport_name,
+      const rtc::NetworkRoute& network_route) = 0;
   // Creates a new outgoing media stream with SSRCs and CNAME as described
   // by sp.
   virtual bool AddSendStream(const StreamParams& sp) = 0;
@@ -998,9 +1000,10 @@ class VideoMediaChannel : public MediaChannel {
   // If SSRC is 0, the renderer is used for the 'default' stream.
   virtual bool SetSink(uint32_t ssrc,
                        rtc::VideoSinkInterface<cricket::VideoFrame>* sink) = 0;
-  // If |ssrc| is 0, replace the default capturer (engine capturer) with
-  // |capturer|. If |ssrc| is non zero create a new stream with |ssrc| as SSRC.
-  virtual bool SetCapturer(uint32_t ssrc, VideoCapturer* capturer) = 0;
+  // Register a source. The |ssrc| must correspond to a registered send stream.
+  virtual void SetSource(
+      uint32_t ssrc,
+      rtc::VideoSourceInterface<cricket::VideoFrame>* source) = 0;
   // Gets quality stats for the channel.
   virtual bool GetStats(VideoMediaInfo* info) = 0;
 };
@@ -1110,7 +1113,7 @@ class DataMediaChannel : public MediaChannel {
   virtual bool SetReceive(bool receive) = 0;
 
   virtual void OnNetworkRouteChanged(const std::string& transport_name,
-                                     const NetworkRoute& network_route) {}
+                                     const rtc::NetworkRoute& network_route) {}
 
   virtual bool SendData(
       const SendDataParams& params,

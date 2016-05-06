@@ -13,8 +13,8 @@
 
 #include <memory>
 
+#include "WebRTC/RTCMacros.h"
 #include "webrtc/base/asyncinvoker.h"
-#include "webrtc/base/objc/RTCMacros.h"
 #include "webrtc/base/thread.h"
 #include "webrtc/base/thread_checker.h"
 #include "webrtc/modules/audio_device/audio_device_generic.h"
@@ -217,7 +217,7 @@ class AudioDeviceIOS : public AudioDeviceGeneric,
   std::unique_ptr<rtc::AsyncInvoker> async_invoker_;
 
   // Raw pointer handle provided to us in AttachAudioBuffer(). Owned by the
-  // AudioDeviceModuleImpl class and called by AudioDeviceModuleImpl::Create().
+  // AudioDeviceModuleImpl class and called by AudioDeviceModule::Create().
   // The AudioDeviceBuffer is a member of the AudioDeviceModuleImpl instance
   // and therefore outlives this object.
   AudioDeviceBuffer* audio_device_buffer_;

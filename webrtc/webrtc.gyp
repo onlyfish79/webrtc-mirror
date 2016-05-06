@@ -35,6 +35,18 @@
         ],
       },
     }],
+    ['build_with_chromium==0 and'
+     '(OS=="ios" or (OS=="mac" and mac_deployment_target=="10.7"))', {
+      # TODO(kjellander): Move this to webrtc_all_dependencies once all of talk/
+      # has been moved to webrtc/. It can't be processed by Chromium since the
+      # reference to buid/java.gypi is using an absolute path (and includes
+      # entries cannot contain variables).
+      'variables': {
+        'webrtc_all_dependencies': [
+          'sdk/sdk.gyp:*',
+        ],
+      },
+    }],
     ['include_tests==1', {
       'includes': [
         'webrtc_tests.gypi',
@@ -97,6 +109,12 @@
             'webrtc_tests',
           ],
         }],
+        ['include_tests==1 and'
+         '(OS=="ios" or (OS=="mac" and mac_deployment_target=="10.7"))', {
+           'dependencies': [
+             'sdk/sdk_tests.gyp:*',
+           ],
+        }],
       ],
     },
     {
@@ -108,8 +126,6 @@
         'audio_state.h',
         'call.h',
         'config.h',
-        'frame_callback.h',
-        'stream.h',
         'transport.h',
         'video_receive_stream.h',
         'video_send_stream.h',
@@ -131,7 +147,6 @@
         ['build_with_chromium==1', {
           'dependencies': [
             '<(webrtc_root)/modules/modules.gyp:video_capture',
-            '<(webrtc_root)/modules/modules.gyp:video_render',
           ],
         }],
       ],
@@ -142,6 +157,8 @@
       'sources': [
         'call/rtc_event_log.cc',
         'call/rtc_event_log.h',
+        'call/rtc_event_log_helper_thread.cc',
+        'call/rtc_event_log_helper_thread.h',
       ],
       'conditions': [
         # If enable_protobuf is defined, we want to compile the protobuf

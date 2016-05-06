@@ -12,6 +12,7 @@
 #define WEBRTC_P2P_BASE_PORT_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -336,7 +337,7 @@ class Port : public PortInterface, public rtc::MessageHandler,
   bool GetStunMessage(const char* data,
                       size_t size,
                       const rtc::SocketAddress& addr,
-                      rtc::scoped_ptr<IceMessage>* out_msg,
+                      std::unique_ptr<IceMessage>* out_msg,
                       std::string* out_username);
 
   // Checks if the address in addr is compatible with the port's ip.
@@ -574,10 +575,14 @@ class Connection : public CandidatePairInterface,
 
   uint32_t ComputeNetworkCost() const;
 
-  // Update the ICE password of the remote candidate if |ice_ufrag| matches
-  // the candidate's ufrag, and the candidate's passwrod has not been set.
-  void MaybeSetRemoteIceCredentials(const std::string& ice_ufrag,
-                                    const std::string& ice_pwd);
+  // Update the ICE password and/or generation of the remote candidate if a
+  // ufrag in |remote_ice_parameters| matches the candidate's ufrag, and the
+  // candidate's password and/or ufrag has not been set.
+  // |remote_ice_parameters| should be a list of known ICE parameters ordered
+  // by generation.
+  void MaybeSetRemoteIceCredentialsAndGeneration(const std::string& ice_ufrag,
+                                                 const std::string& ice_pwd,
+                                                 int generation);
 
   // If |remote_candidate_| is peer reflexive and is equivalent to
   // |new_candidate| except the type, update |remote_candidate_| to

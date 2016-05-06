@@ -22,52 +22,6 @@
         }],
       ],
     }],
-    ['OS=="ios" or (OS=="mac" and mac_deployment_target=="10.7")', {
-      'targets': [
-        {
-          'target_name': 'rtc_base_objc',
-          'type': 'static_library',
-          'includes': [ '../build/objc_common.gypi' ],
-          'dependencies': [
-            'rtc_base',
-          ],
-          'sources': [
-            'objc/NSString+StdString.h',
-            'objc/NSString+StdString.mm',
-            'objc/RTCDispatcher.h',
-            'objc/RTCDispatcher.m',
-            'objc/RTCFieldTrials.h',
-            'objc/RTCFieldTrials.mm',
-            'objc/RTCFileLogger.h',
-            'objc/RTCFileLogger.mm',
-            'objc/RTCLogging.h',
-            'objc/RTCLogging.mm',
-            'objc/RTCMacros.h',
-            'objc/RTCSSLAdapter.h',
-            'objc/RTCSSLAdapter.mm',
-            'objc/RTCTracing.h',
-            'objc/RTCTracing.mm',
-          ],
-          'conditions': [
-            ['OS=="ios"', {
-              'sources': [
-                'objc/RTCCameraPreviewView.h',
-                'objc/RTCCameraPreviewView.m',
-                'objc/RTCUIApplication.h',
-                'objc/RTCUIApplication.mm',
-              ],
-              'all_dependent_settings': {
-                'xcode_settings': {
-                  'OTHER_LDFLAGS': [
-                    '-framework AVFoundation',
-                  ],
-                },
-              },
-            }],
-          ],
-        }
-      ],
-    }], # OS=="ios"
   ],
   'targets': [
     {
@@ -77,9 +31,9 @@
       'sources': [
         'array_view.h',
         'atomicops.h',
+        'bind.h',
         'bitbuffer.cc',
         'bitbuffer.h',
-        'buffer.cc',
         'buffer.h',
         'bufferqueue.cc',
         'bufferqueue.h',
@@ -155,8 +109,19 @@
           'sources': [
             'logging.cc',
             'logging.h',
+            'logging_mac.mm',
           ],
         }],
+        ['OS=="mac" and build_with_chromium==0', {
+          'all_dependent_settings': {
+            'xcode_settings': {
+              'OTHER_LDFLAGS': [
+                # needed for logging_mac.mm
+                '-framework Foundation',
+              ],
+            },
+          },
+        }], # OS=="mac" and build_with_chromium==0
       ],
     },
     {
@@ -241,6 +206,7 @@
         'network.h',
         'networkmonitor.cc',
         'networkmonitor.h',
+        'nullsocketserver.cc',
         'nullsocketserver.h',
         'openssl.h',
         'openssladapter.cc',
@@ -263,6 +229,8 @@
         'ratelimiter.h',
         'rtccertificate.cc',
         'rtccertificate.h',
+        'rtccertificategenerator.cc',
+        'rtccertificategenerator.h',
         'sha1.cc',
         'sha1.h',
         'sha1digest.cc',
@@ -362,7 +330,6 @@
           'sources': [
             'bandwidthsmoother.cc',
             'bandwidthsmoother.h',
-            'bind.h',
             'callback.h',
             'fileutils_mock.h',
             'httpserver.cc',

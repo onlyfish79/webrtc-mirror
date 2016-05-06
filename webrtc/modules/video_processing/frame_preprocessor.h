@@ -46,9 +46,6 @@ class VPMFramePreprocessor {
                               uint32_t height,
                               uint32_t frame_rate);
 
-  // Set target frame rate.
-  void SetTargetFramerate(int frame_rate);
-
   // Update incoming frame rate/dimension.
   void UpdateIncomingframe_rate();
 
@@ -60,7 +57,7 @@ class VPMFramePreprocessor {
   uint32_t GetDecimatedHeight() const;
 
   // Preprocess output:
-  void EnableDenosing(bool enable);
+  void EnableDenoising(bool enable);
   const VideoFrame* PreprocessFrame(const VideoFrame& frame);
   VideoContentMetrics* GetContentMetrics() const;
 
@@ -70,14 +67,14 @@ class VPMFramePreprocessor {
   enum { kSkipFrameCA = 2 };
 
   VideoContentMetrics* content_metrics_;
-  VideoFrame denoised_frame_;
-  VideoFrame denoised_frame_prev_;
+  VideoFrame denoised_frame_[2];
   VideoFrame resampled_frame_;
   VPMSpatialResampler* spatial_resampler_;
   VPMContentAnalysis* ca_;
   VPMVideoDecimator* vd_;
   std::unique_ptr<VideoDenoiser> denoiser_;
   bool enable_ca_;
+  uint8_t denoised_frame_toggle_;
   uint32_t frame_cnt_;
 };
 

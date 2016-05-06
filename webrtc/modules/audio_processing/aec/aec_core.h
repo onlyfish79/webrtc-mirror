@@ -47,13 +47,13 @@ typedef struct Stats {
   float sum;
   float hisum;
   float himean;
-  int counter;
-  int hicounter;
+  size_t counter;
+  size_t hicounter;
 } Stats;
 
 typedef struct AecCore AecCore;
 
-AecCore* WebRtcAec_CreateAec();  // Returns NULL on error.
+AecCore* WebRtcAec_CreateAec(int instance_count);  // Returns NULL on error.
 void WebRtcAec_FreeAec(AecCore* aec);
 int WebRtcAec_InitAec(AecCore* aec, int sampFreq);
 void WebRtcAec_InitAec_SSE2(void);
@@ -97,9 +97,6 @@ void WebRtcAec_GetEchoStats(AecCore* self,
                             Stats* erle,
                             Stats* a_nlp,
                             float* divergent_filter_fraction);
-#ifdef WEBRTC_AEC_DEBUG_DUMP
-void* WebRtcAec_far_time_buf(AecCore* self);
-#endif
 
 // Sets local configuration modes.
 void WebRtcAec_SetConfigCore(AecCore* self,
@@ -119,6 +116,12 @@ void WebRtcAec_enable_aec3(AecCore* self, int enable);
 
 // Returns 1 if the next generation aec is enabled and zero if disabled.
 int WebRtcAec_aec3_enabled(AecCore* self);
+
+// Turns on/off the refined adaptive filter feature.
+void WebRtcAec_enable_refined_adaptive_filter(AecCore* self, bool enable);
+
+// Returns whether the refined adaptive filter is enabled.
+bool WebRtcAec_refined_adaptive_filter(const AecCore* self);
 
 // Enables or disables extended filter mode. Non-zero enables, zero disables.
 void WebRtcAec_enable_extended_filter(AecCore* self, int enable);

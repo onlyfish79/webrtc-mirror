@@ -15,7 +15,6 @@
       'dependencies': [
         '<(webrtc_root)/base/base.gyp:rtc_base_approved',
         '<(webrtc_root)/common.gyp:webrtc_common',
-        '<(webrtc_root)/modules/modules.gyp:video_render_module',
         '<(webrtc_root)/webrtc.gyp:webrtc',
         '<(webrtc_root)/voice_engine/voice_engine.gyp:voice_engine',
         '<(webrtc_root)/system_wrappers/system_wrappers.gyp:metrics_default',
@@ -30,7 +29,6 @@
         ],
       },
       'sources': [
-        'base/audioframe.h',
         'base/audiosource.h',
         'base/codec.cc',
         'base/codec.h',
@@ -134,7 +132,6 @@
         ['build_with_chromium==1', {
           'dependencies': [
             '<(webrtc_root)/modules/modules.gyp:video_capture',
-            '<(webrtc_root)/modules/modules.gyp:video_render',
           ],
         }, {
           'defines': [
@@ -149,7 +146,6 @@
           },
           'dependencies': [
             '<(webrtc_root)/modules/modules.gyp:video_capture_module_internal_impl',
-            '<(webrtc_root)/modules/modules.gyp:video_render_module_internal_impl',
           ],
         }],
         ['OS=="linux" and use_gtk==1', {
@@ -304,15 +300,6 @@
           ],
           'conditions': [
             ['OS=="win"', {
-              'conditions': [
-                ['use_openssl==0', {
-                  'dependencies': [
-                    '<(DEPTH)/net/third_party/nss/ssl.gyp:libssl',
-                    '<(DEPTH)/third_party/nss/nss.gyp:nspr',
-                    '<(DEPTH)/third_party/nss/nss.gyp:nss',
-                  ],
-                }],
-              ],
               'msvs_settings': {
                 'VCLinkerTool': {
                   'AdditionalDependencies': [
